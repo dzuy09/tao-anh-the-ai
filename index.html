@@ -126,7 +126,7 @@
 
   <script type="module">
     // ==========================================
-    // TIÊM OPENCV TRỰC TIẾP (BẢN TECHSTARK NGUYÊN KHỐI CHỐNG CHẶN 100%)
+    // TIÊM OPENCV TRỰC TIẾP 
     // ==========================================
     window.isOpenCvReady = false;
     window.isBrushMode = false;
@@ -144,12 +144,9 @@
 
     const loadOpenCV = () => {
       const script = document.createElement('script');
-      // Dùng máy chủ jsDelivr và bản TechStark (Single File, nén mọi thứ vào Base64 bên trong)
       script.src = 'https://cdn.jsdelivr.net/npm/@techstark/opencv-js@4.8.0-release.1/dist/opencv.min.js';
       script.async = true;
-      
       script.onload = () => {
-        // Đọc lõi Module nếu nó được bọc bằng Promise
         if (typeof cv === 'function' || cv instanceof Promise) {
             Promise.resolve(cv).then(resolvedCv => {
                 if (typeof resolvedCv === 'function') {
@@ -165,7 +162,6 @@
                 }
             });
         } else {
-            // Radar quét thông thường
             const checkReady = setInterval(() => {
               if (window.cv && window.cv.Mat) {
                 clearInterval(checkReady);
@@ -175,12 +171,10 @@
             }, 200);
         }
       };
-      
       script.onerror = () => alert("Lỗi mạng cục bộ: Vui lòng thử dùng mạng 4G hoặc đường truyền Wifi khác.");
       document.body.appendChild(script);
     };
     
-    // Gọi tải thuật toán ngay lập tức
     loadOpenCV();
 
     import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers';
@@ -261,6 +255,9 @@
         brushTools.classList.add('hidden');
         
         if (drawCanvas.parentNode) drawCanvas.parentNode.removeChild(drawCanvas);
+        
+        // Fix rác Cropper cũ
+        if (cropper) cropper.destroy();
         cropper = new Cropper(imagePreview, { aspectRatio: currentRatio, viewMode: 1, autoCropArea: 0.9, responsive: true });
       }
     };
@@ -325,11 +322,19 @@
           window.cv.inpaint(srcMatRGB, maskGray, dstMat, radius, window.cv.INPAINT_TELEA);
 
           window.cv.imshow(srcCanvas, dstMat);
-          imagePreview.src = srcCanvas.toDataURL('image/jpeg', 1.0);
+          const newDataUrl = srcCanvas.toDataURL('image/jpeg', 1.0);
           
           srcMatRGBA.delete(); srcMatRGB.delete(); maskMat.delete(); maskGray.delete(); dstMat.delete();
 
+          // 1. Tắt cọ vẽ (lệnh này sẽ tự động khôi phục khung Cropper)
           btnToggleBrush.click(); 
+          
+          // 2. Dùng lệnh replace() thần thánh để Cropper ngậm ảnh mới mà không bị lỗi
+          if (cropper) {
+              cropper.replace(newDataUrl);
+          } else {
+              imagePreview.src = newDataUrl;
+          }
           
           progressText.innerText = 'Đã xóa mộc thành công!';
           progressBar.style.width = '100%';
@@ -359,15 +364,19 @@
           if (btnDownload) btnDownload.classList.add('hidden');
           if (imagePreview) {
             imagePreview.classList.remove('hidden');
-            imagePreview.src = event.target.result;
-
-            if (cropper) cropper.destroy();
-            cropper = new Cropper(imagePreview, {
-              aspectRatio: currentRatio,
-              viewMode: 1,
-              autoCropArea: 0.9,
-              responsive: true
-            });
+            
+            // Dùng hàm replace khi tải ảnh mới để chống lỗi kẹt bộ nhớ
+            if (cropper) {
+              cropper.replace(event.target.result);
+            } else {
+              imagePreview.src = event.target.result;
+              cropper = new Cropper(imagePreview, {
+                aspectRatio: currentRatio,
+                viewMode: 1,
+                autoCropArea: 0.9,
+                responsive: true
+              });
+            }
           }
         };
         reader.readAsDataURL(file);
@@ -495,7 +504,10 @@
         if (!cropper) return alert('Vui lòng tải ảnh lên trước!');
         try {
           const targetBg = (document.querySelector('input[name="bgColor"]:checked') || {}).value || '#ffffff';
+          // Nếu ảnh rỗng, lệnh getCroppedCanvas sẽ gây lỗi, giờ thì hết rồi!
           const croppedCanvas = cropper.getCroppedCanvas();
+          if (!croppedCanvas) return alert('Lỗi: Khung cắt chưa sẵn sàng. Vui lòng thử tải lại ảnh!');
+          
           const targetW = currentRatio === 3 / 4 ? 900 : 1200;
           const targetH = currentRatio === 3 / 4 ? 1200 : 1800;
 
