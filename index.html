@@ -126,7 +126,7 @@
 
   <script type="module">
     // ==========================================
-    // TIÊM OPENCV TRỰC TIẾP (BẢN 3.4.0 THUẦN JS - CHỐNG CHẶN)
+    // TIÊM OPENCV TRỰC TIẾP (BẢN TECHSTARK NGUYÊN KHỐI CHỐNG CHẶN 100%)
     // ==========================================
     window.isOpenCvReady = false;
     window.isBrushMode = false;
@@ -144,29 +144,39 @@
 
     const loadOpenCV = () => {
       const script = document.createElement('script');
-      // Dùng Cloudflare siêu tốc, phiên bản thuần JS không dính lỗi WebAssembly
-      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/opencv.js/3.4.0/opencv.js';
+      // Dùng máy chủ jsDelivr và bản TechStark (Single File, nén mọi thứ vào Base64 bên trong)
+      script.src = 'https://cdn.jsdelivr.net/npm/@techstark/opencv-js@4.8.0-release.1/dist/opencv.min.js';
       script.async = true;
       
       script.onload = () => {
-        const checkReady = setInterval(() => {
-          if (typeof cv !== 'undefined' && cv.Mat) {
-            clearInterval(checkReady);
-            window.isOpenCvReady = true;
-            activateInpaintButton();
-          } else if (typeof cv === 'function') {
-            // Xử lý nốt nếu nó kẹt ở dạng Promise (phòng hờ)
-            cv().then(target => {
-                window.cv = target;
+        // Đọc lõi Module nếu nó được bọc bằng Promise
+        if (typeof cv === 'function' || cv instanceof Promise) {
+            Promise.resolve(cv).then(resolvedCv => {
+                if (typeof resolvedCv === 'function') {
+                    resolvedCv().then(target => {
+                        window.cv = target;
+                        window.isOpenCvReady = true;
+                        activateInpaintButton();
+                    }).catch(console.error);
+                } else {
+                    window.cv = resolvedCv;
+                    window.isOpenCvReady = true;
+                    activateInpaintButton();
+                }
+            });
+        } else {
+            // Radar quét thông thường
+            const checkReady = setInterval(() => {
+              if (window.cv && window.cv.Mat) {
+                clearInterval(checkReady);
                 window.isOpenCvReady = true;
                 activateInpaintButton();
-                clearInterval(checkReady);
-            }).catch(()=>{});
-          }
-        }, 200);
+              }
+            }, 200);
+        }
       };
       
-      script.onerror = () => alert("Lỗi mạng: Trình duyệt vẫn đang chặn tải. Hãy thử mở bằng tab Ẩn danh (Ctrl+Shift+N) nhé!");
+      script.onerror = () => alert("Lỗi mạng cục bộ: Vui lòng thử dùng mạng 4G hoặc đường truyền Wifi khác.");
       document.body.appendChild(script);
     };
     
@@ -335,7 +345,7 @@
     };
 
     // ==========================================
-    // TẢI ẢNH LÊN
+    // TẢI ẢNH LÊN & CÁC TÁC VỤ KHÁC...
     // ==========================================
     if (fileInput) {
       fileInput.addEventListener('change', (e) => {
@@ -367,9 +377,6 @@
     if (btn3x4) btn3x4.onclick = () => { currentRatio = 3/4; if (cropper) cropper.setAspectRatio(3/4); };
     if (btn4x6) btn4x6.onclick = () => { currentRatio = 4/6; if (cropper) cropper.setAspectRatio(4/6); };
 
-    // ==========================================
-    // KHỞI TẠO AI BÓC TÓC (ormbg-ONNX chuẩn)
-    // ==========================================
     async function getAIPipeline() {
       if (segmenter) return segmenter;
 
@@ -416,9 +423,6 @@
       return segmenter;
     }
 
-    // ==========================================
-    // HÀM BÓC TÁCH & GHÉP NỀN (GIỮ NGUYÊN PIXEL ALPHA)
-    // ==========================================
     async function processImageWithAI(imageSourceCanvasOrUrl, targetBgHex, targetWidth, targetHeight) {
       const aiSegmenter = await getAIPipeline();
 
@@ -486,9 +490,6 @@
       return resultCanvas;
     }
 
-    // ==========================================
-    // XỬ LÝ ẢNH ĐƠN
-    // ==========================================
     if (btnProcess) {
       btnProcess.onclick = async () => {
         if (!cropper) return alert('Vui lòng tải ảnh lên trước!');
@@ -531,9 +532,6 @@
       };
     }
 
-    // ==========================================
-    // XỬ LÝ HÀNG LOẠT
-    // ==========================================
     if (btnBatchProcess) {
       btnBatchProcess.onclick = async () => {
         const files = batchInput ? batchInput.files : null;
