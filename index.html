@@ -256,18 +256,18 @@
     drawCanvas.addEventListener('mouseup', () => isDrawing = false);
     drawCanvas.addEventListener('mouseout', () => isDrawing = false);
 
-// GỌI API XÓA MỘC ĐÁM MÂY (TÍCH HỢP VƯỢT TƯỜNG LỬA CORS & BẢN NHẸ 384px)
+// GỌI API XÓA MỘC ĐÁM MÂY (GỬI TRỰC TIẾP, BỎ QUA CỔNG TRUNG GIAN)
     btnApplyInpaint.onclick = async () => {
       const token = hfTokenInpaint.value;
       if (!token) return alert('Vui lòng nhập Token Hugging Face để dùng AI Đám mây!');
       
       progressContainer.classList.remove('hidden');
-      progressText.innerText = 'Đang nén an toàn & Gửi qua máy chủ AI... (20-40s)';
+      progressText.innerText = 'Đang nén an toàn & Gửi trực tiếp lên AI... (20-40s)';
       progressBar.style.width = '20%';
       progressPercent.innerText = '20%';
 
       try {
-        // 1. ÉP KÍCH THƯỚC 384px: Kích thước vàng để API miễn phí không bao giờ từ chối
+        // 1. ÉP KÍCH THƯỚC 384px (Tuyệt đối an toàn cho API miễn phí)
         const MAX_SIZE = 384;
         let scale = 1;
         if (imagePreview.naturalWidth > MAX_SIZE || imagePreview.naturalHeight > MAX_SIZE) {
@@ -293,41 +293,25 @@
         maskCtx.drawImage(drawCanvas, 0, 0, reqW, reqH);
         const maskB64 = maskReqCanvas.toDataURL('image/jpeg', 0.8).split(',')[1];
 
-        // 2. CẤU HÌNH GỬI API (Thêm cổng Proxy dự phòng lách luật trình duyệt)
+        // 2. GỌI TRỰC TIẾP API HUGGING FACE (Xóa bỏ corsproxy.io)
         const targetUrl = "https://api-inference.huggingface.co/models/runwayml/stable-diffusion-inpainting";
-        // Nếu bị chặn CORS, trình duyệt sẽ tự động gọi qua Proxy lách luật này
-        const proxyUrl = "https://corsproxy.io/?" + encodeURIComponent(targetUrl);
         
-        let response;
-        try {
-          // Thử gửi trực tiếp trước
-          response = await fetch(targetUrl, {
-            method: "POST",
-            headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
-            body: JSON.stringify({
-              inputs: "remove red stamp, highly detailed, photorealistic, seamless skin, restore clothing",
-              image: imageB64,
-              mask_image: maskB64
-            })
-          });
-        } catch (netErr) {
-          // Nếu bị trình duyệt chặn (Failed to fetch), tự động bẻ lái qua Proxy
-          console.warn("Bị chặn kết nối, đang thử gọi qua Proxy vượt tường lửa...");
-          progressText.innerText = 'Đang chuyển hướng qua cổng bảo mật...';
-          response = await fetch(proxyUrl, {
-            method: "POST",
-            headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
-            body: JSON.stringify({
-              inputs: "remove red stamp, highly detailed, photorealistic, seamless skin, restore clothing",
-              image: imageB64,
-              mask_image: maskB64
-            })
-          });
-        }
+        const response = await fetch(targetUrl, {
+          method: "POST",
+          headers: { 
+            "Authorization": `Bearer ${token}`, 
+            "Content-Type": "application/json" 
+          },
+          body: JSON.stringify({
+            inputs: "remove red stamp, highly detailed, photorealistic, seamless skin, restore clothing",
+            image: imageB64,
+            mask_image: maskB64
+          })
+        });
 
         if (!response.ok) {
            const errData = await response.json().catch(() => ({}));
-           throw new Error(errData.error || `Mã lỗi: ${response.status} - Máy chủ Hugging Face từ chối`);
+           throw new Error(errData.error || `Mã lỗi: ${response.status} - Máy chủ từ chối`);
         }
 
         progressText.innerText = 'Đang xử lý khôi phục ảnh...';
@@ -358,7 +342,7 @@
         
       } catch (err) {
         console.error(err);
-        alert('Lỗi Xóa Mộc AI: ' + err.message + '\n\n💡 Mẹo xử lý:\n1. CHẮC CHẮN chạy trang web này trong tab Ẩn danh (Ctrl+Shift+N).\n2. Nếu Model đang bận (Warming up), bạn cứ đợi 30 giây rồi bấm nút Xóa lại lần nữa nhé!');
+        alert('Lỗi Xóa Mộc AI: ' + err.message + '\n\n💡 LƯU Ý SỐNG CÒN:\n1. TẮT TẠM THỜI tiện ích chặn quảng cáo (AdBlock, uBlock) trên trang này.\n2. Đợi 30s để AI khởi động rồi bấm Xóa lần nữa.');
         progressContainer.classList.add('hidden');
       }
     };
