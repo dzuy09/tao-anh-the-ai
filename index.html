@@ -130,193 +130,267 @@
     </div>
   </div>
 
-  <script type="module">
-    let cropper = null;
-    let currentRatio = 3 / 4;
-    let singleOriginalName = "anhthe"; // Lưu tên file của ảnh đơn
+<script type="module">
+  // FIX 1: Xóa số phiên bản đuôi để luôn lấy bản Stable mới nhất, chống lỗi "Segformer"
+  import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers';
 
-    const fileInput = document.getElementById('fileInput');
-    const imagePreview = document.getElementById('imagePreview');
-    const outputCanvas = document.getElementById('outputCanvas');
-    const placeholderText = document.getElementById('placeholderText');
-    const progressContainer = document.getElementById('progressContainer');
-    const progressText = document.getElementById('progressText');
-    const progressPercent = document.getElementById('progressPercent');
-    const progressBar = document.getElementById('progressBar');
-    
-    const btnDownload = document.getElementById('btnDownload');
-    const batchFileInput = document.getElementById('batchFileInput');
-    const btnBatchProcess = document.getElementById('btnBatchProcess');
-    const batchProgressText = document.getElementById('batchProgressText');
+  env.allowLocalModels = false;
 
-    // ==========================================
-    // LOGIC 1: XỬ LÝ ẢNH ĐƠN LẺ
-    // ==========================================
+  let cropper = null;
+  let currentRatio = 3 / 4;
+  let segmenter = null;
+
+  const fileInput = document.getElementById('fileInput');
+  const batchInput = document.getElementById('batchFileInput'); // Đã sửa đúng ID của nút upload hàng loạt
+  const imagePreview = document.getElementById('imagePreview');
+  const outputCanvas = document.getElementById('outputCanvas');
+  const placeholderText = document.getElementById('placeholderText');
+  const progressContainer = document.getElementById('progressContainer');
+  const progressText = document.getElementById('progressText');
+  const progressPercent = document.getElementById('progressPercent');
+  const progressBar = document.getElementById('progressBar');
+  const btnProcess = document.getElementById('btnProcess');
+  const btnBatchProcess = document.getElementById('btnBatchProcess');
+  const btnDownload = document.getElementById('btnDownload');
+
+  if (fileInput) {
     fileInput.addEventListener('change', (e) => {
       const file = e.target.files[0];
       if (!file) return;
-      
-      // Lấy tên file gốc (Bỏ đuôi mở rộng)
-      singleOriginalName = file.name.replace(/\.[^/.]+$/, "");
 
       const reader = new FileReader();
       reader.onload = (event) => {
-        placeholderText.classList.add('hidden');
-        outputCanvas.classList.add('hidden');
-        btnDownload.classList.add('hidden');
-        imagePreview.classList.remove('hidden');
-        imagePreview.src = event.target.result;
-        if (cropper) cropper.destroy();
-        cropper = new Cropper(imagePreview, { aspectRatio: currentRatio, viewMode: 1, autoCropArea: 0.9, responsive: true });
+        if (placeholderText) placeholderText.classList.add('hidden');
+        if (outputCanvas) outputCanvas.classList.add('hidden');
+        if (btnDownload) btnDownload.classList.add('hidden');
+        if (imagePreview) {
+          imagePreview.classList.remove('hidden');
+          imagePreview.src = event.target.result;
+
+          if (cropper) cropper.destroy();
+          cropper = new Cropper(imagePreview, {
+            aspectRatio: currentRatio,
+            viewMode: 1,
+            autoCropArea: 0.9,
+            responsive: true
+          });
+        }
       };
       reader.readAsDataURL(file);
     });
+  }
 
-    document.getElementById('btnCrop3x4').onclick = () => { currentRatio = 3/4; if (cropper) cropper.setAspectRatio(3/4); };
-    document.getElementById('btnCrop4x6').onclick = () => { currentRatio = 4/6; if (cropper) cropper.setAspectRatio(4/6); };
+  const btn3x4 = document.getElementById('btnCrop3x4');
+  const btn4x6 = document.getElementById('btnCrop4x6');
+  if (btn3x4) btn3x4.onclick = () => { currentRatio = 3/4; if (cropper) cropper.setAspectRatio(3/4); };
+  if (btn4x6) btn4x6.onclick = () => { currentRatio = 4/6; if (cropper) cropper.setAspectRatio(4/6); };
 
-    // Tách nền ảnh đơn
-    async function processMode4_Imgly(croppedCanvas, targetBgHex) {
-      progressContainer.classList.remove('hidden');
-      progressText.innerText = 'Đang nạp AI bóc tách nền...';
-      progressBar.style.width = '5%';
-      progressPercent.innerText = '5%';
+  // ==========================================
+  // KHỞI TẠO AI (Dùng onnx-community/rmbg-1.4)
+  // ==========================================
+  async function getAIPipeline() {
+    if (segmenter) return segmenter;
 
+    if (progressContainer) progressContainer.classList.remove('hidden');
+    if (progressText) progressText.innerText = 'Khởi tạo AI Bóc Tóc (WebGPU)...';
+    if (progressBar) progressBar.style.width = '10%';
+    if (progressPercent) progressPercent.innerText = '10%';
+
+    let device = 'wasm';
+    if (typeof navigator !== 'undefined' && 'gpu' in navigator) {
       try {
-        const module = await import('https://esm.run/@imgly/background-removal');
-        const removeBackground = module.default || module.removeBackground;
+        const adapter = await navigator.gpu.requestAdapter();
+        if (adapter) device = 'webgpu';
+      } catch (err) {}
+    }
 
-        const blob = await new Promise(resolve => croppedCanvas.toBlob(resolve, 'image/png'));
-        
-        const config = {
-          progress: (key, current, total) => {
-            const p = Math.round((current / total) * 100);
-            if (p > 0) {
-              progressText.innerText = `Đang bóc tách AI...`;
-              progressBar.style.width = `${p}%`;
-              progressPercent.innerText = `${p}%`;
-            }
+    // FIX 2: Dùng onnx-community/rmbg-1.4 (Bản xịn nhất cho tóc, không bị khóa Unauthorized)
+    const modelId = 'onnx-community/rmbg-1.4';
+    
+    try {
+      segmenter = await pipeline('image-segmentation', modelId, {
+        device: device,
+        progress_callback: (item) => {
+          if (item && item.status === 'progress') {
+            const p = Math.round(item.progress || 0);
+            if (progressText) progressText.innerText = `Đang tải Model AI (${device.toUpperCase()})...`;
+            if (progressBar) progressBar.style.width = `${p}%`;
+            if (progressPercent) progressPercent.innerText = `${p}%`;
           }
-        };
+        }
+      });
+    } catch (error) {
+      console.warn('Khởi tạo WebGPU thất bại, thử lại với WASM:', error);
+      segmenter = await pipeline('image-segmentation', modelId, {
+        device: 'wasm',
+        progress_callback: (item) => {
+          if (item && item.status === 'progress') {
+            const p = Math.round(item.progress || 0);
+            if (progressText) progressText.innerText = `Đang tải Model AI (WASM)...`;
+            if (progressBar) progressBar.style.width = `${p}%`;
+            if (progressPercent) progressPercent.innerText = `${p}%`;
+          }
+        }
+      });
+    }
+    return segmenter;
+  }
 
-        const resultBlob = await removeBackground(blob, config);
+  // ==========================================
+  // HÀM BÓC TÁCH & GHÉP NỀN (GIỮ NGUYÊN TÓC)
+  // ==========================================
+  async function processImageWithAI(imageSourceCanvasOrUrl, targetBgHex, targetWidth, targetHeight) {
+    const aiSegmenter = await getAIPipeline();
 
-        progressText.innerText = 'Đang ghép phông nền...';
-        progressBar.style.width = '100%';
-        progressPercent.innerText = '100%';
+    if (progressText) progressText.innerText = 'Đang bóc tách nền & viền tóc AI...';
+    if (progressBar) progressBar.style.width = '90%';
+    if (progressPercent) progressPercent.innerText = '90%';
 
-        const img = new Image();
-        const url = URL.createObjectURL(resultBlob);
-        img.src = url;
-        await new Promise(resolve => img.onload = resolve);
+    const srcImg = new Image();
+    srcImg.crossOrigin = 'anonymous';
+    const inputUrl = typeof imageSourceCanvasOrUrl === 'string'
+      ? imageSourceCanvasOrUrl
+      : imageSourceCanvasOrUrl.toDataURL('image/png');
 
+    await new Promise((res, rej) => {
+      srcImg.onload = res;
+      srcImg.onerror = rej;
+      srcImg.src = inputUrl;
+    });
+
+    const output = await aiSegmenter(inputUrl);
+
+    const fgCanvas = document.createElement('canvas');
+    fgCanvas.width = srcImg.width;
+    fgCanvas.height = srcImg.height;
+    const fgCtx = fgCanvas.getContext('2d');
+
+    let maskCanvas = null;
+    if (output && typeof output.toCanvas === 'function') {
+      maskCanvas = output.toCanvas();
+    } else if (Array.isArray(output) && output[0]?.mask?.toCanvas) {
+      maskCanvas = output[0].mask.toCanvas();
+    } else if (Array.isArray(output) && output[0]?.toCanvas) {
+      maskCanvas = output[0].toCanvas();
+    }
+
+    if (maskCanvas) {
+      fgCtx.drawImage(srcImg, 0, 0);
+      fgCtx.globalCompositeOperation = 'destination-in';
+      fgCtx.drawImage(maskCanvas, 0, 0, srcImg.width, srcImg.height);
+    } else {
+      fgCtx.drawImage(srcImg, 0, 0);
+    }
+
+    const resultCanvas = document.createElement('canvas');
+    resultCanvas.width = targetWidth;
+    resultCanvas.height = targetHeight;
+    const ctx = resultCanvas.getContext('2d');
+
+    ctx.fillStyle = targetBgHex;
+    ctx.fillRect(0, 0, targetWidth, targetHeight);
+
+    const scale = Math.max(targetWidth / fgCanvas.width, targetHeight / fgCanvas.height);
+    const drawW = fgCanvas.width * scale;
+    const drawH = fgCanvas.height * scale;
+    const posX = (targetWidth - drawW) / 2;
+    const posY = (targetHeight - drawH) / 2;
+
+    ctx.drawImage(fgCanvas, posX, posY, drawW, drawH);
+    return resultCanvas;
+  }
+
+  // ==========================================
+  // XỬ LÝ ẢNH ĐƠN
+  // ==========================================
+  if (btnProcess) {
+    btnProcess.onclick = async () => {
+      if (!cropper) return alert('Vui lòng tải ảnh lên trước!');
+      try {
+        const targetBg = (document.querySelector('input[name="bgColor"]:checked') || {}).value || '#ffffff';
+        const croppedCanvas = cropper.getCroppedCanvas();
         const targetW = currentRatio === 3 / 4 ? 900 : 1200;
         const targetH = currentRatio === 3 / 4 ? 1200 : 1800;
-        outputCanvas.width = targetW;
-        outputCanvas.height = targetH;
-        const ctx = outputCanvas.getContext('2d');
 
-        ctx.fillStyle = targetBgHex;
-        ctx.fillRect(0, 0, targetW, targetH);
-        ctx.drawImage(img, 0, 0, targetW, targetH);
-        URL.revokeObjectURL(url); 
+        const finalCanvas = await processImageWithAI(croppedCanvas, targetBg, targetW, targetH);
 
-        progressContainer.classList.add('hidden');
-        imagePreview.classList.add('hidden');
-        if (cropper) cropper.destroy();
-        outputCanvas.classList.remove('hidden');
-        
-        // Hiện nút tải xuống
-        btnDownload.classList.remove('hidden');
+        if (outputCanvas) {
+          outputCanvas.width = targetW;
+          outputCanvas.height = targetH;
+          const outCtx = outputCanvas.getContext('2d');
+          outCtx.drawImage(finalCanvas, 0, 0);
 
-      } catch (error) {
-        console.error(error);
-        alert('Lỗi xử lý AI: ' + error.message);
-        progressContainer.classList.add('hidden');
-      }
-    }
-    
-    // Nút Bấm Xử lý ảnh đơn
-    document.getElementById('btnProcess').onclick = async () => {
-      if (!cropper) return alert('Vui lòng tải ảnh lên trước!');
-      const targetBg = document.querySelector('input[name="bgColor"]:checked').value;
-      const croppedCanvas = cropper.getCroppedCanvas();
-      await processMode4_Imgly(croppedCanvas, targetBg);
-    };
-
-    // Tải xuống ảnh đơn (Định dạng JPG, Tên gốc)
-    btnDownload.onclick = () => {
-      const dataUrl = outputCanvas.toDataURL('image/jpeg', 1.0); // 1.0 là chất lượng cao nhất
-      const link = document.createElement('a');
-      link.download = `${singleOriginalName}.jpg`;
-      link.href = dataUrl;
-      link.click();
-    };
-
-    // ==========================================
-    // LOGIC 2: XỬ LÝ HÀNG LOẠT (BATCH PROCESSING)
-    // ==========================================
-    btnBatchProcess.onclick = async () => {
-      const files = batchFileInput.files;
-      if (files.length === 0) return alert('Vui lòng chọn ít nhất 1 ảnh ở khu vực Xử lý hàng loạt!');
-      
-      const targetBg = document.querySelector('input[name="bgColor"]:checked').value;
-      batchProgressText.classList.remove('hidden');
-      
-      try {
-        batchProgressText.innerText = `Đang nạp AI bóc tách nền...`;
-        // Tải thư viện 1 lần duy nhất để dùng cho vòng lặp
-        const module = await import('https://esm.run/@imgly/background-removal');
-        const removeBackground = module.default || module.removeBackground;
-
-        // Bắt đầu vòng lặp qua từng file ảnh
-        for (let i = 0; i < files.length; i++) {
-          const file = files[i];
-          const originalName = file.name.replace(/\.[^/.]+$/, ""); // Lấy tên gốc bỏ đuôi
-          
-          batchProgressText.innerText = `Đang xử lý ${i + 1}/${files.length} ảnh: ${file.name}...`;
-          
-          // 1. Tách nền (truyền thẳng object File vào imgly)
-          const resultBlob = await removeBackground(file);
-          
-          // 2. Load ảnh trong suốt lên bộ nhớ tạm
-          const img = new Image();
-          const url = URL.createObjectURL(resultBlob);
-          img.src = url;
-          await new Promise(resolve => img.onload = resolve);
-          
-          // 3. Tạo Canvas ẩn (Giữ nguyên kích thước gốc của ảnh, không crop)
-          const tempCanvas = document.createElement('canvas');
-          tempCanvas.width = img.width;
-          tempCanvas.height = img.height;
-          const ctx = tempCanvas.getContext('2d');
-          
-          // 4. Ghép nền và vẽ ảnh
-          ctx.fillStyle = targetBg;
-          ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
-          ctx.drawImage(img, 0, 0);
-          URL.revokeObjectURL(url); // Dọn dẹp RAM
-          
-          // 5. Kích hoạt tải xuống tự động (JPG)
-          const dataUrl = tempCanvas.toDataURL('image/jpeg', 1.0);
-          const link = document.createElement('a');
-          link.download = `${originalName}.jpg`; // Đúng tên gốc + .jpg
-          link.href = dataUrl;
-          link.click();
-          
-          // Tạm nghỉ 0.5s giữa các ảnh để trình duyệt kịp xử lý lệnh tải xuống
-          await new Promise(r => setTimeout(r, 500));
+          if (imagePreview) imagePreview.classList.add('hidden');
+          if (cropper) cropper.destroy();
+          outputCanvas.classList.remove('hidden');
         }
+
+        if (progressContainer) progressContainer.classList.add('hidden');
         
-        batchProgressText.innerText = `✅ Đã hoàn tất xử lý & tải về ${files.length} ảnh!`;
-        alert(`Hoàn tất xử lý ${files.length} ảnh! Vui lòng kiểm tra thư mục Download của máy tính.`);
-        
-      } catch (error) {
-        console.error(error);
-        alert('Lỗi khi xử lý hàng loạt: ' + error.message);
-        batchProgressText.innerText = `❌ Xử lý thất bại!`;
+        // Cập nhật lại tính năng tải ảnh đơn giữ nguyên tên
+        if (btnDownload && fileInput.files.length > 0) {
+          btnDownload.classList.remove('hidden');
+          const originalName = fileInput.files[0].name.replace(/\.[^/.]+$/, "");
+          btnDownload.onclick = () => {
+            const link = document.createElement('a');
+            link.download = `${originalName}.jpg`;
+            link.href = finalCanvas.toDataURL('image/jpeg', 1.0);
+            link.click();
+          };
+        }
+      } catch (err) {
+        console.error('Lỗi xử lý AI:', err);
+        alert('Có lỗi khi xử lý AI: ' + err.message);
+        if (progressContainer) progressContainer.classList.add('hidden');
       }
     };
-  </script>
+  }
+
+  // ==========================================
+  // XỬ LÝ HÀNG LOẠT (BATCH PROCESSING)
+  // ==========================================
+  if (btnBatchProcess) {
+    btnBatchProcess.onclick = async () => {
+      const files = batchInput ? batchInput.files : null;
+      if (!files || files.length === 0) {
+        return alert('Vui lòng chọn ít nhất 1 ảnh để xử lý hàng loạt!');
+      }
+
+      const targetBg = (document.querySelector('input[name="bgColor"]:checked') || {}).value || '#ffffff';
+      const targetW = currentRatio === 3 / 4 ? 900 : 1200;
+      const targetH = currentRatio === 3 / 4 ? 1200 : 1800;
+
+      if (progressContainer) progressContainer.classList.remove('hidden');
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (progressText) progressText.innerText = `Đang xử lý ảnh (${i + 1}/${files.length}): ${file.name}...`;
+
+        const dataUrl = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = (e) => resolve(e.target.result);
+          reader.readAsDataURL(file);
+        });
+
+        try {
+          const finalCanvas = await processImageWithAI(dataUrl, targetBg, targetW, targetH);
+          const link = document.createElement('a');
+          const cleanName = file.name.replace(/\.[^/.]+$/, "");
+          link.download = `${cleanName}.jpg`;
+          link.href = finalCanvas.toDataURL('image/jpeg', 1.0);
+          link.click();
+
+          await new Promise((r) => setTimeout(r, 400));
+        } catch (err) {
+          console.error(`Lỗi xử lý file ${file.name}:`, err);
+        }
+      }
+
+      if (progressContainer) progressContainer.classList.add('hidden');
+      alert(`✅ Đã hoàn tất xử lý & tải về ${files.length} ảnh thẻ!`);
+    };
+  }
+</script>
+  
 </body>
 </html>
