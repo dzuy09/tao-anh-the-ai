@@ -9,8 +9,24 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
   
-  <!-- Tải OpenCV qua Cloudflare (Bỏ phần bắt sự kiện cũ bị lỗi) -->
-  <script async src="https://cdnjs.cloudflare.com/ajax/libs/opencv.js/4.8.0/opencv.min.js" type="text/javascript"></script>
+  <!-- CÚ CHỐT: Hàm bắt tín hiệu OpenCV chuẩn 100% -->
+  <script>
+    window.isOpenCvReady = false;
+    window.Module = {
+      onRuntimeInitialized: function() {
+        window.isOpenCvReady = true;
+        // Tự động bật sáng nút nếu người dùng đã bấm Bật Cọ Vẽ trước đó
+        const btn = document.getElementById('btnApplyInpaint');
+        if (btn && btn.innerText.includes('Đang tải')) {
+           btn.innerText = '✨ Xóa Mộc Ngay';
+           btn.disabled = false;
+           btn.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+      }
+    };
+  </script>
+  <!-- Dùng bản 4.5.4 siêu ổn định, nguyên khối (không bị lỗi thiếu file WASM) -->
+  <script async src="https://docs.opencv.org/4.5.4/opencv.js" type="text/javascript"></script>
 
   <style>
     body { background-color: #0f172a; color: #f8fafc; font-family: system-ui, sans-serif; }
@@ -156,27 +172,6 @@
     const brushSizeLabel = document.getElementById('brushSizeLabel');
 
     // ==========================================
-    // CÚ CHỐT: RADAR QUÉT OPENCV LIÊN TỤC
-    // ==========================================
-    window.isOpenCvReady = false;
-    const cvChecker = setInterval(() => {
-      // Quét xem đối tượng 'cv' và hàm 'Mat' đã xuất hiện trong bộ nhớ chưa
-      if (typeof window.cv !== 'undefined' && window.cv.Mat) {
-        window.isOpenCvReady = true;
-        clearInterval(cvChecker); // Tắt radar khi đã tìm thấy
-        
-        // Bật sáng nút Xóa Mộc
-        if (btnApplyInpaint.innerText.includes('Đang tải')) {
-           btnApplyInpaint.innerText = '✨ Xóa Mộc Ngay';
-           if (isBrushMode) {
-             btnApplyInpaint.disabled = false;
-             btnApplyInpaint.classList.remove('opacity-50', 'cursor-not-allowed');
-           }
-        }
-      }
-    }, 500); // Quét mỗi 0.5 giây
-
-    // ==========================================
     // LOGIC CỌ VẼ & XÓA MỘC (OPENCV OFFLINE)
     // ==========================================
     let isBrushMode = false;
@@ -263,7 +258,7 @@
     drawCanvas.addEventListener('mouseout', () => isDrawing = false);
 
     btnApplyInpaint.onclick = async () => {
-      if (!window.isOpenCvReady) {
+      if (!window.isOpenCvReady || !window.cv || !window.cv.Mat) {
         return alert('Lõi thuật toán vẫn đang tải. Vui lòng chờ nút bấm chuyển sang "Xóa Mộc Ngay" nhé!');
       }
 
