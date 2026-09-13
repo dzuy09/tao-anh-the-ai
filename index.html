@@ -8,6 +8,9 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
+  
+  <!-- CÚ CHỐT: Tải thư viện OpenCV.js siêu mạnh để Xóa Mộc Offline -->
+  <script async src="https://docs.opencv.org/4.8.0/opencv.js" type="text/javascript"></script>
 
   <style>
     body { background-color: #0f172a; color: #f8fafc; font-family: system-ui, sans-serif; }
@@ -19,37 +22,31 @@
 <body class="p-6">
   <div class="max-w-6xl mx-auto bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl">
     <h1 class="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-cyan-400 mb-6">
-      Studio Ảnh Thẻ AI - Tự Động Hóa & Xóa Mộc
+      Studio Ảnh Thẻ AI - Tự Động Hóa & Xóa Mộc (Offline)
     </h1>
 
     <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
-      <!-- Cột Điều Khiển -->
       <div class="md:col-span-4 space-y-5">
         
-        <!-- KHU VỰC 1: XÓA MỘC ĐỎ (TÍNH NĂNG MỚI) -->
+        <!-- KHU VỰC 1: XÓA MỘC ĐỎ (OPENCV OFFLINE) -->
         <div class="p-4 bg-slate-800/50 rounded-xl border border-rose-500/50 space-y-4">
-          <h2 class="font-bold text-rose-400 text-sm border-b border-slate-700 pb-2">1. XÓA MỘC ĐỎ (AI ĐÁM MÂY)</h2>
+          <h2 class="font-bold text-rose-400 text-sm border-b border-slate-700 pb-2">1. XÓA MỘC ĐỎ (LOCAL SIÊU TỐC)</h2>
           
-          <div>
-            <label class="block text-[11px] font-semibold text-slate-400 mb-1">Mã Token Hugging Face:</label>
-            <input type="password" id="hfTokenInpaint" placeholder="Dán Token hf_... vào đây" class="w-full text-xs p-2 rounded-lg bg-slate-900 border border-slate-700 text-white focus:border-rose-500 outline-none" />
-          </div>
-
           <div class="grid grid-cols-2 gap-2">
             <button id="btnToggleBrush" class="py-2 bg-slate-700 hover:bg-slate-600 border border-slate-600 text-white text-xs rounded-lg font-bold transition-all">🖌️ Bật Cọ Vẽ</button>
-            <button id="btnApplyInpaint" class="py-2 bg-rose-600 hover:bg-rose-500 text-white text-xs rounded-lg font-bold transition-all opacity-50 cursor-not-allowed" disabled>✨ Xóa Mộc AI</button>
+            <button id="btnApplyInpaint" class="py-2 bg-rose-600 hover:bg-rose-500 text-white text-xs rounded-lg font-bold transition-all opacity-50 cursor-not-allowed" disabled>✨ Xóa Mộc Ngay</button>
           </div>
           
           <div id="brushTools" class="hidden bg-slate-900 p-2 rounded-lg border border-slate-700">
              <label class="block text-[11px] text-slate-400 mb-1">Cỡ cọ: <span id="brushSizeLabel">20</span>px</label>
              <input type="range" id="brushSize" min="5" max="80" value="20" class="w-full accent-rose-500" />
-             <p class="text-[10px] text-rose-300 mt-2 italic">* Dùng chuột bôi kín phần dấu mộc trên ảnh bên phải, sau đó bấm Xóa Mộc AI.</p>
+             <p class="text-[10px] text-rose-300 mt-2 italic">* Dùng chuột bôi kín phần dấu mộc trên ảnh, sau đó bấm Xóa Mộc.</p>
           </div>
         </div>
 
-        <!-- KHU VỰC 2: XỬ LÝ ẢNH ĐƠN (CÓ CẮT CÚP) -->
+        <!-- KHU VỰC 2: XỬ LÝ ẢNH ĐƠN -->
         <div class="p-4 bg-slate-800/50 rounded-xl border border-slate-700 space-y-4">
-          <h2 class="font-bold text-pink-400 text-sm border-b border-slate-700 pb-2">2. CẮT & TÁCH NỀN THỦ CÔNG</h2>
+          <h2 class="font-bold text-pink-400 text-sm border-b border-slate-700 pb-2">2. CẮT & TÁCH NỀN AI TÓC</h2>
           
           <div>
             <label class="block text-xs font-semibold text-slate-300 mb-1">Tải ảnh gốc</label>
@@ -57,7 +54,7 @@
           </div>
 
           <div>
-            <label class="block text-xs font-semibold text-slate-300 mb-1">Khung Cắt (Cropper.js)</label>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Khung Cắt</label>
             <div class="grid grid-cols-2 gap-2">
               <button id="btnCrop3x4" class="py-2 bg-pink-950/60 border border-pink-500 text-pink-200 text-xs rounded-lg font-bold">3 x 4 cm</button>
               <button id="btnCrop4x6" class="py-2 bg-slate-800 border border-slate-700 text-slate-300 text-xs rounded-lg font-bold">4 x 6 cm</button>
@@ -132,15 +129,12 @@
 
   <script type="module">
     import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers';
-
-    // BẢO MẬT: Chặn Model Local. Model Bóc Tóc chạy công khai không cần Token.
     env.allowLocalModels = false;
 
     let cropper = null;
     let currentRatio = 3 / 4;
     let segmenter = null;
 
-    // DOM Elements
     const fileInput = document.getElementById('fileInput');
     const batchInput = document.getElementById('batchFileInput');
     const imagePreview = document.getElementById('imagePreview');
@@ -155,8 +149,6 @@
     const btnBatchProcess = document.getElementById('btnBatchProcess');
     const btnDownload = document.getElementById('btnDownload');
     
-    // Inpainting DOM
-    const hfTokenInpaint = document.getElementById('hfTokenInpaint');
     const btnToggleBrush = document.getElementById('btnToggleBrush');
     const btnApplyInpaint = document.getElementById('btnApplyInpaint');
     const brushTools = document.getElementById('brushTools');
@@ -164,28 +156,23 @@
     const brushSizeLabel = document.getElementById('brushSizeLabel');
 
     // ==========================================
-    // LOGIC CỌ VẼ & XÓA MỘC (INPAINTING)
+    // LOGIC CỌ VẼ & XÓA MỘC (OPENCV OFFLINE)
     // ==========================================
     let isBrushMode = false;
     let isDrawing = false;
     let drawCanvas = document.createElement('canvas');
     let drawCtx = drawCanvas.getContext('2d');
     
-    // Lưu token vào local để khỏi nhập lại
-    hfTokenInpaint.value = localStorage.getItem('hfTokenInpaint') || '';
-    hfTokenInpaint.addEventListener('change', (e) => localStorage.setItem('hfTokenInpaint', e.target.value));
-
     drawCanvas.style.position = 'absolute';
     drawCanvas.style.zIndex = '50';
     drawCanvas.style.cursor = 'crosshair';
-    drawCanvas.style.opacity = '0.5'; // Nhìn xuyên thấu để thấy dấu mộc
+    drawCanvas.style.opacity = '0.5'; 
 
     btnToggleBrush.onclick = () => {
       if (!imagePreview.src || imagePreview.src === window.location.href) return alert('Vui lòng tải ảnh lên trước!');
       
       isBrushMode = !isBrushMode;
       if (isBrushMode) {
-        // Bật chế độ vẽ
         btnToggleBrush.innerText = '❌ Hủy Vẽ Cọ';
         btnToggleBrush.classList.replace('bg-slate-700', 'bg-rose-900');
         btnApplyInpaint.disabled = false;
@@ -194,7 +181,6 @@
         
         if (cropper) cropper.destroy();
         
-        // Setup Canvas khớp với kích thước hiển thị của ảnh
         drawCanvas.width = imagePreview.naturalWidth;
         drawCanvas.height = imagePreview.naturalHeight;
         drawCanvas.style.width = imagePreview.clientWidth + 'px';
@@ -202,13 +188,10 @@
         drawCanvas.style.top = imagePreview.offsetTop + 'px';
         drawCanvas.style.left = imagePreview.offsetLeft + 'px';
         
-        // Nền đen, cọ trắng (Mask AI Inpaint)
         drawCtx.fillStyle = 'black';
         drawCtx.fillRect(0, 0, drawCanvas.width, drawCanvas.height);
-        
         imageWrapper.appendChild(drawCanvas);
       } else {
-        // Tắt chế độ vẽ
         btnToggleBrush.innerText = '🖌️ Bật Cọ Vẽ';
         btnToggleBrush.classList.replace('bg-rose-900', 'bg-slate-700');
         btnApplyInpaint.disabled = true;
@@ -216,23 +199,17 @@
         brushTools.classList.add('hidden');
         
         if (drawCanvas.parentNode) drawCanvas.parentNode.removeChild(drawCanvas);
-        
-        // Bật lại khung cắt
         cropper = new Cropper(imagePreview, { aspectRatio: currentRatio, viewMode: 1, autoCropArea: 0.9, responsive: true });
       }
     };
 
-    // Theo dõi chuột để vẽ
     brushSize.oninput = (e) => brushSizeLabel.innerText = e.target.value;
 
     function getMousePos(canvas, evt) {
       const rect = canvas.getBoundingClientRect();
       const scaleX = canvas.width / rect.width;
       const scaleY = canvas.height / rect.height;
-      return {
-        x: (evt.clientX - rect.left) * scaleX,
-        y: (evt.clientY - rect.top) * scaleY
-      };
+      return { x: (evt.clientX - rect.left) * scaleX, y: (evt.clientY - rect.top) * scaleY };
     }
 
     drawCanvas.addEventListener('mousedown', (e) => {
@@ -246,7 +223,7 @@
       if (!isDrawing) return;
       const pos = getMousePos(drawCanvas, e);
       drawCtx.lineTo(pos.x, pos.y);
-      drawCtx.strokeStyle = 'white'; // Mask bôi trắng
+      drawCtx.strokeStyle = 'white'; 
       drawCtx.lineWidth = brushSize.value * (drawCanvas.width / drawCanvas.clientWidth);
       drawCtx.lineCap = 'round';
       drawCtx.lineJoin = 'round';
@@ -256,84 +233,46 @@
     drawCanvas.addEventListener('mouseup', () => isDrawing = false);
     drawCanvas.addEventListener('mouseout', () => isDrawing = false);
 
-// GỌI API XÓA MỘC ĐÁM MÂY (GỬI TRỰC TIẾP, BỎ QUA CỔNG TRUNG GIAN)
+    // GỌI THUẬT TOÁN OPENCV XÓA MỘC OFFLINE
     btnApplyInpaint.onclick = async () => {
-      const token = hfTokenInpaint.value;
-      if (!token) return alert('Vui lòng nhập Token Hugging Face để dùng AI Đám mây!');
-      
+      if (typeof cv === 'undefined' || !cv.Mat) {
+        return alert('Thuật toán Xóa mộc đang được tải xuống lần đầu (khoảng 8MB). Vui lòng đợi thêm vài giây rồi bấm lại nhé!');
+      }
+
       progressContainer.classList.remove('hidden');
-      progressText.innerText = 'Đang nén an toàn & Gửi trực tiếp lên AI... (20-40s)';
-      progressBar.style.width = '20%';
-      progressPercent.innerText = '20%';
+      progressText.innerText = 'Đang dùng thuật toán Telea khôi phục ảnh...';
+      progressBar.style.width = '50%';
+      progressPercent.innerText = '50%';
 
       try {
-        // 1. ÉP KÍCH THƯỚC 384px (Tuyệt đối an toàn cho API miễn phí)
-        const MAX_SIZE = 384;
-        let scale = 1;
-        if (imagePreview.naturalWidth > MAX_SIZE || imagePreview.naturalHeight > MAX_SIZE) {
-          scale = Math.min(MAX_SIZE / imagePreview.naturalWidth, MAX_SIZE / imagePreview.naturalHeight);
-        }
-        const reqW = Math.round(imagePreview.naturalWidth * scale);
-        const reqH = Math.round(imagePreview.naturalHeight * scale);
+        // 1. Tạo Canvas cho ảnh gốc
+        const srcCanvas = document.createElement('canvas');
+        srcCanvas.width = imagePreview.naturalWidth;
+        srcCanvas.height = imagePreview.naturalHeight;
+        srcCanvas.getContext('2d').drawImage(imagePreview, 0, 0);
 
-        // Nén ảnh gốc
-        const reqCanvas = document.createElement('canvas');
-        reqCanvas.width = reqW;
-        reqCanvas.height = reqH;
-        reqCanvas.getContext('2d').drawImage(imagePreview, 0, 0, reqW, reqH);
-        const imageB64 = reqCanvas.toDataURL('image/jpeg', 0.8).split(',')[1];
+        // 2. Chuyển ảnh và mặt nạ vào bộ nhớ OpenCV
+        let srcMatRGBA = cv.imread(srcCanvas);
+        let srcMatRGB = new cv.Mat();
+        cv.cvtColor(srcMatRGBA, srcMatRGB, cv.COLOR_RGBA2RGB); // Bắt buộc chuyển sang RGB để tránh lỗi
 
-        // Nén Mặt nạ cọ vẽ
-        const maskReqCanvas = document.createElement('canvas');
-        maskReqCanvas.width = reqW;
-        maskReqCanvas.height = reqH;
-        const maskCtx = maskReqCanvas.getContext('2d');
-        maskCtx.fillStyle = 'black'; 
-        maskCtx.fillRect(0, 0, reqW, reqH);
-        maskCtx.drawImage(drawCanvas, 0, 0, reqW, reqH);
-        const maskB64 = maskReqCanvas.toDataURL('image/jpeg', 0.8).split(',')[1];
+        let maskMat = cv.imread(drawCanvas);
+        let maskGray = new cv.Mat();
+        cv.cvtColor(maskMat, maskGray, cv.COLOR_RGBA2GRAY, 0); // Chuyển mask sang Trắng Đen
 
-        // 2. GỌI TRỰC TIẾP API HUGGING FACE (Xóa bỏ corsproxy.io)
-        const targetUrl = "https://api-inference.huggingface.co/models/runwayml/stable-diffusion-inpainting";
+        // 3. Thực thi Inpainting (Thuật toán Telea)
+        let dstMat = new cv.Mat();
+        const radius = 5; // Bán kính bù đắp điểm ảnh
+        cv.inpaint(srcMatRGB, maskGray, dstMat, radius, cv.INPAINT_TELEA);
+
+        // 4. Vẽ lại kết quả ra màn hình
+        cv.imshow(srcCanvas, dstMat);
+        imagePreview.src = srcCanvas.toDataURL('image/jpeg', 1.0);
         
-        const response = await fetch(targetUrl, {
-          method: "POST",
-          headers: { 
-            "Authorization": `Bearer ${token}`, 
-            "Content-Type": "application/json" 
-          },
-          body: JSON.stringify({
-            inputs: "remove red stamp, highly detailed, photorealistic, seamless skin, restore clothing",
-            image: imageB64,
-            mask_image: maskB64
-          })
-        });
+        // Dọn dẹp RAM
+        srcMatRGBA.delete(); srcMatRGB.delete(); maskMat.delete(); maskGray.delete(); dstMat.delete();
 
-        if (!response.ok) {
-           const errData = await response.json().catch(() => ({}));
-           throw new Error(errData.error || `Mã lỗi: ${response.status} - Máy chủ từ chối`);
-        }
-
-        progressText.innerText = 'Đang xử lý khôi phục ảnh...';
-        progressBar.style.width = '80%';
-        progressPercent.innerText = '80%';
-
-        // 3. ĐẮP ẢNH AI LÊN ẢNH GỐC ĐỂ GIỮ CHẤT LƯỢNG CAO
-        const blob = await response.blob();
-        const aiImg = new Image();
-        aiImg.src = URL.createObjectURL(blob);
-        await new Promise(r => aiImg.onload = r);
-
-        const finalCanvas = document.createElement('canvas');
-        finalCanvas.width = imagePreview.naturalWidth;
-        finalCanvas.height = imagePreview.naturalHeight;
-        const finalCtx = finalCanvas.getContext('2d');
-        
-        finalCtx.drawImage(imagePreview, 0, 0); 
-        finalCtx.drawImage(aiImg, 0, 0, imagePreview.naturalWidth, imagePreview.naturalHeight);
-
-        imagePreview.src = finalCanvas.toDataURL('image/jpeg', 1.0);
-        btnToggleBrush.click(); 
+        btnToggleBrush.click(); // Thoát cọ vẽ
         
         progressText.innerText = 'Đã xóa mộc thành công!';
         progressBar.style.width = '100%';
@@ -342,11 +281,10 @@
         
       } catch (err) {
         console.error(err);
-        alert('Lỗi Xóa Mộc AI: ' + err.message + '\n\n💡 LƯU Ý SỐNG CÒN:\n1. TẮT TẠM THỜI tiện ích chặn quảng cáo (AdBlock, uBlock) trên trang này.\n2. Đợi 30s để AI khởi động rồi bấm Xóa lần nữa.');
+        alert('Lỗi khi chạy thuật toán: ' + err.message);
         progressContainer.classList.add('hidden');
       }
     };
-
 
     // ==========================================
     // TẢI ẢNH LÊN
@@ -476,7 +414,6 @@
         const fgData = fgCtx.getImageData(0, 0, srcImg.width, srcImg.height);
         const maskData = maskCtx.getImageData(0, 0, srcImg.width, srcImg.height);
 
-        // Chuyển độ sáng mặt nạ AI thành kênh Alpha trong suốt
         for (let i = 0; i < fgData.data.length; i += 4) {
           fgData.data[i + 3] = maskData.data[i]; 
         }
@@ -547,7 +484,7 @@
     }
 
     // ==========================================
-    // XỬ LÝ HÀNG LOẠT (BATCH PROCESSING)
+    // XỬ LÝ HÀNG LOẠT
     // ==========================================
     if (btnBatchProcess) {
       btnBatchProcess.onclick = async () => {
