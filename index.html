@@ -168,71 +168,74 @@
       if (cropper) cropper.setAspectRatio(4 / 6);
     };
 
-    // 3. Xử lý Chế độ 4: RMBG-1.4 (WebGPU/WASM qua @huggingface/transformers)
+// 3. Xử lý Chế độ 4: Tách nền siêu nét (Thư viện @imgly - Không lỗi bản quyền)
     async function processMode4_RMBG(croppedCanvas, targetBgHex) {
       progressContainer.classList.remove('hidden');
-      progressText.innerText = 'Đang nạp Transformers.js từ CDN...';
+      progressText.innerText = 'Đang khởi tạo AI bóc tách nền...';
       progressBar.style.width = '10%';
       progressPercent.innerText = '10%';
 
-      // Lazy load thư viện qua CDN
-      const { pipeline, env } = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.3.3');
-      env.allowLocalModels = false;
+      try {
+        // Tải thư viện imgly siêu nhẹ qua CDN
+        const imgly = await import('https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.4.3/+esm');
 
-      // Kiểm tra WebGPU
-      let device = 'wasm';
-      if (navigator.gpu) {
-        try {
-          const adapter = await navigator.gpu.requestAdapter();
-          if (adapter) device = 'webgpu';
-        } catch (_) {}
-      }
+        progressText.innerText = 'Đang xử lý (Lần đầu sẽ tải model ~40MB)...';
+        progressBar.style.width = '30%';
+        progressPercent.innerText = '30%';
 
-      // Khởi tạo model briaai/RMBG-1.4 với progress_callback
-      if (!rmbgPipeline) {
-        rmbgPipeline = await pipeline('image-segmentation', 'Xenova/modnet', {
-          device: device,
-          progress_callback: (item) => {
-            if (item.status === 'progress') {
-              const p = Math.round(item.progress || 0);
-              progressText.innerText = `Đang tải Model AI RMBG-1.4 (~40-80MB)...`;
-              progressPercent.innerText = `${p}%`;
+        // Chuyển Canvas thành Blob để AI xử lý
+        const blob = await new Promise(resolve => croppedCanvas.toBlob(resolve, 'image/png'));
+
+        // Gọi hàm tách nền tự động của Imgly
+        const resultBlob = await imgly.removeBackground(blob, {
+          progress: (key, current, total) => {
+            const p = Math.round((current / total) * 100);
+            if (p > 0) {
+              progressText.innerText = `Đang tải & bóc tách AI...`;
               progressBar.style.width = `${p}%`;
-            } else if (item.status === 'done') {
-              progressText.innerText = 'Đã tải xong model!';
+              progressPercent.innerText = `${p}%`;
             }
           }
         });
+
+        progressText.innerText = 'Đang ghép phông nền thẻ...';
+        progressBar.style.width = '95%';
+
+        // Chuyển kết quả ảnh trong suốt thành Canvas
+        const img = new Image();
+        const url = URL.createObjectURL(resultBlob);
+        img.src = url;
+        await new Promise(resolve => img.onload = resolve);
+
+        // Chuẩn bị khung Canvas đầu ra
+        const targetW = currentRatio === 3 / 4 ? 900 : 1200;
+        const targetH = currentRatio === 3 / 4 ? 1200 : 1800;
+
+        outputCanvas.width = targetW;
+        outputCanvas.height = targetH;
+        const ctx = outputCanvas.getContext('2d');
+
+        // 1. Vẽ màu nền thẻ
+        ctx.fillStyle = targetBgHex;
+        ctx.fillRect(0, 0, targetW, targetH);
+
+        // 2. Vẽ chủ thể nét căng lên trên
+        ctx.drawImage(img, 0, 0, targetW, targetH);
+
+        // Dọn dẹp RAM
+        URL.revokeObjectURL(url); 
+
+        // Hiển thị kết quả
+        progressContainer.classList.add('hidden');
+        imagePreview.classList.add('hidden');
+        if (cropper) cropper.destroy();
+        outputCanvas.classList.remove('hidden');
+
+      } catch (error) {
+        console.error(error);
+        alert('Lỗi xử lý AI: ' + error.message);
+        progressContainer.classList.add('hidden');
       }
-
-      progressText.innerText = `Đang bóc tách nền AI (${device.toUpperCase()})...`;
-      progressBar.style.width = '95%';
-      progressPercent.innerText = '95%';
-
-      const croppedDataUrl = croppedCanvas.toDataURL('image/png');
-      const output = await rmbgPipeline(croppedDataUrl);
-
-      // Kết quả RGBA trong suốt ghép lên nền màu đã chọn
-      const fgCanvas = output.toCanvas ? output.toCanvas() : croppedCanvas;
-      
-      const targetW = currentRatio === 3 / 4 ? 900 : 1200;
-      const targetH = currentRatio === 3 / 4 ? 1200 : 1800;
-
-      outputCanvas.width = targetW;
-      outputCanvas.height = targetH;
-      const ctx = outputCanvas.getContext('2d');
-
-      // Vẽ màu nền
-      ctx.fillStyle = targetBgHex;
-      ctx.fillRect(0, 0, targetW, targetH);
-
-      // Vẽ chủ thể
-      ctx.drawImage(fgCanvas, 0, 0, targetW, targetH);
-
-      progressContainer.classList.add('hidden');
-      imagePreview.classList.add('hidden');
-      if (cropper) cropper.destroy();
-      outputCanvas.classList.remove('hidden');
     }
 
     // 4. Bấm nút xử lý
