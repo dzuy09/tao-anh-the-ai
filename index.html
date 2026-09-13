@@ -131,17 +131,19 @@
   </div>
 
 <script type="module">
-  // FIX 1: Xóa số phiên bản đuôi để luôn lấy bản Stable mới nhất, chống lỗi "Segformer"
+  // FIX 1: Xóa số phiên bản đuôi để luôn lấy bản Stable mới nhất
   import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers';
 
   env.allowLocalModels = false;
+  // DÁN MÃ TOKEN HUGGING FACE CỦA BẠN VÀO GIỮA 2 DẤU NHÁY ĐƠN BÊN DƯỚI:
+  env.token = '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';
 
   let cropper = null;
   let currentRatio = 3 / 4;
   let segmenter = null;
 
   const fileInput = document.getElementById('fileInput');
-  const batchInput = document.getElementById('batchFileInput'); // Đã sửa đúng ID của nút upload hàng loạt
+  const batchInput = document.getElementById('batchFileInput');
   const imagePreview = document.getElementById('imagePreview');
   const outputCanvas = document.getElementById('outputCanvas');
   const placeholderText = document.getElementById('placeholderText');
@@ -186,7 +188,7 @@
   if (btn4x6) btn4x6.onclick = () => { currentRatio = 4/6; if (cropper) cropper.setAspectRatio(4/6); };
 
   // ==========================================
-  // KHỞI TẠO AI (Dùng onnx-community/rmbg-1.4)
+  // KHỞI TẠO AI (Dùng chính hãng briaai/RMBG-1.4 + Token)
   // ==========================================
   async function getAIPipeline() {
     if (segmenter) return segmenter;
@@ -204,8 +206,8 @@
       } catch (err) {}
     }
 
-    // FIX 2: Dùng onnx-community/rmbg-1.4 (Bản xịn nhất cho tóc, không bị khóa Unauthorized)
-    const modelId = 'onnx-community/rmbg-1.4';
+    // ĐÃ SỬA: Quay về model gốc xịn nhất + Đã có Token bảo kê ở trên
+    const modelId = 'briaai/RMBG-1.4';
     
     try {
       segmenter = await pipeline('image-segmentation', modelId, {
