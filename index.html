@@ -9,8 +9,23 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
   
-  <!-- CÚ CHỐT: Tải thư viện OpenCV.js siêu mạnh để Xóa Mộc Offline -->
-  <script async src="https://docs.opencv.org/4.8.0/opencv.js" type="text/javascript"></script>
+  <!-- CÚ CHỐT 1: Bắt sự kiện tải xong lõi C++ (WebAssembly) -->
+  <script>
+    window.isOpenCvReady = false;
+    var Module = {
+      onRuntimeInitialized: function() {
+        window.isOpenCvReady = true;
+        const btn = document.getElementById('btnApplyInpaint');
+        if (btn && btn.innerText.includes('Đang tải')) {
+           btn.innerText = '✨ Xóa Mộc Ngay';
+           btn.disabled = false;
+           btn.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+      }
+    };
+  </script>
+  <!-- CÚ CHỐT 2: Đổi sang máy chủ Cloudflare siêu tốc -->
+  <script async src="https://cdnjs.cloudflare.com/ajax/libs/opencv.js/4.8.0/opencv.min.js" type="text/javascript"></script>
 
   <style>
     body { background-color: #0f172a; color: #f8fafc; font-family: system-ui, sans-serif; }
@@ -175,9 +190,18 @@
       if (isBrushMode) {
         btnToggleBrush.innerText = '❌ Hủy Vẽ Cọ';
         btnToggleBrush.classList.replace('bg-slate-700', 'bg-rose-900');
-        btnApplyInpaint.disabled = false;
-        btnApplyInpaint.classList.remove('opacity-50', 'cursor-not-allowed');
         brushTools.classList.remove('hidden');
+        
+        // Kiểm tra xem OpenCV đã sẵn sàng chưa
+        if (window.isOpenCvReady) {
+            btnApplyInpaint.disabled = false;
+            btnApplyInpaint.classList.remove('opacity-50', 'cursor-not-allowed');
+            btnApplyInpaint.innerText = '✨ Xóa Mộc Ngay';
+        } else {
+            btnApplyInpaint.disabled = true;
+            btnApplyInpaint.classList.add('opacity-50', 'cursor-not-allowed');
+            btnApplyInpaint.innerText = '⏳ Đang tải thuật toán...';
+        }
         
         if (cropper) cropper.destroy();
         
@@ -235,55 +259,53 @@
 
     // GỌI THUẬT TOÁN OPENCV XÓA MỘC OFFLINE
     btnApplyInpaint.onclick = async () => {
-      if (typeof cv === 'undefined' || !cv.Mat) {
-        return alert('Thuật toán Xóa mộc đang được tải xuống lần đầu (khoảng 8MB). Vui lòng đợi thêm vài giây rồi bấm lại nhé!');
+      if (!window.isOpenCvReady) {
+        return alert('Lõi thuật toán vẫn đang tải. Vui lòng chờ nút bấm chuyển sang "Xóa Mộc Ngay" nhé!');
       }
 
       progressContainer.classList.remove('hidden');
-      progressText.innerText = 'Đang dùng thuật toán Telea khôi phục ảnh...';
+      progressText.innerText = 'Đang khôi phục ảnh với thuật toán Telea...';
       progressBar.style.width = '50%';
       progressPercent.innerText = '50%';
 
-      try {
-        // 1. Tạo Canvas cho ảnh gốc
-        const srcCanvas = document.createElement('canvas');
-        srcCanvas.width = imagePreview.naturalWidth;
-        srcCanvas.height = imagePreview.naturalHeight;
-        srcCanvas.getContext('2d').drawImage(imagePreview, 0, 0);
+      // Dùng setTimeout để giao diện cập nhật thanh Loading trước khi lõi C++ chạy (chống đơ trình duyệt)
+      setTimeout(() => {
+        try {
+          const srcCanvas = document.createElement('canvas');
+          srcCanvas.width = imagePreview.naturalWidth;
+          srcCanvas.height = imagePreview.naturalHeight;
+          srcCanvas.getContext('2d').drawImage(imagePreview, 0, 0);
 
-        // 2. Chuyển ảnh và mặt nạ vào bộ nhớ OpenCV
-        let srcMatRGBA = cv.imread(srcCanvas);
-        let srcMatRGB = new cv.Mat();
-        cv.cvtColor(srcMatRGBA, srcMatRGB, cv.COLOR_RGBA2RGB); // Bắt buộc chuyển sang RGB để tránh lỗi
+          let srcMatRGBA = cv.imread(srcCanvas);
+          let srcMatRGB = new cv.Mat();
+          cv.cvtColor(srcMatRGBA, srcMatRGB, cv.COLOR_RGBA2RGB); 
 
-        let maskMat = cv.imread(drawCanvas);
-        let maskGray = new cv.Mat();
-        cv.cvtColor(maskMat, maskGray, cv.COLOR_RGBA2GRAY, 0); // Chuyển mask sang Trắng Đen
+          let maskMat = cv.imread(drawCanvas);
+          let maskGray = new cv.Mat();
+          cv.cvtColor(maskMat, maskGray, cv.COLOR_RGBA2GRAY, 0); 
 
-        // 3. Thực thi Inpainting (Thuật toán Telea)
-        let dstMat = new cv.Mat();
-        const radius = 5; // Bán kính bù đắp điểm ảnh
-        cv.inpaint(srcMatRGB, maskGray, dstMat, radius, cv.INPAINT_TELEA);
+          let dstMat = new cv.Mat();
+          const radius = 5; 
+          cv.inpaint(srcMatRGB, maskGray, dstMat, radius, cv.INPAINT_TELEA);
 
-        // 4. Vẽ lại kết quả ra màn hình
-        cv.imshow(srcCanvas, dstMat);
-        imagePreview.src = srcCanvas.toDataURL('image/jpeg', 1.0);
-        
-        // Dọn dẹp RAM
-        srcMatRGBA.delete(); srcMatRGB.delete(); maskMat.delete(); maskGray.delete(); dstMat.delete();
+          cv.imshow(srcCanvas, dstMat);
+          imagePreview.src = srcCanvas.toDataURL('image/jpeg', 1.0);
+          
+          srcMatRGBA.delete(); srcMatRGB.delete(); maskMat.delete(); maskGray.delete(); dstMat.delete();
 
-        btnToggleBrush.click(); // Thoát cọ vẽ
-        
-        progressText.innerText = 'Đã xóa mộc thành công!';
-        progressBar.style.width = '100%';
-        progressPercent.innerText = '100%';
-        setTimeout(() => progressContainer.classList.add('hidden'), 2000);
-        
-      } catch (err) {
-        console.error(err);
-        alert('Lỗi khi chạy thuật toán: ' + err.message);
-        progressContainer.classList.add('hidden');
-      }
+          btnToggleBrush.click(); 
+          
+          progressText.innerText = 'Đã xóa mộc thành công!';
+          progressBar.style.width = '100%';
+          progressPercent.innerText = '100%';
+          setTimeout(() => progressContainer.classList.add('hidden'), 2000);
+          
+        } catch (err) {
+          console.error(err);
+          alert('Lỗi khi chạy thuật toán: ' + err.message);
+          progressContainer.classList.add('hidden');
+        }
+      }, 50);
     };
 
     // ==========================================
