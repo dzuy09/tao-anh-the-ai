@@ -133,7 +133,7 @@
     document.getElementById('btnCrop3x4').onclick = () => { currentRatio = 3/4; if (cropper) cropper.setAspectRatio(3/4); };
     document.getElementById('btnCrop4x6').onclick = () => { currentRatio = 4/6; if (cropper) cropper.setAspectRatio(4/6); };
 
-    // Xử lý bằng @imgly (JSdelivr ESM + Cấu hình PublicPath chuẩn)
+  // Xử lý bằng @imgly (Tự động phân giải Module cực mạnh)
     async function processMode4_Imgly(croppedCanvas, targetBgHex) {
       progressContainer.classList.remove('hidden');
       progressText.innerText = 'Đang nạp AI bóc tách nền...';
@@ -141,15 +141,17 @@
       progressPercent.innerText = '5%';
 
       try {
-        // 1. Dùng JSdelivr thay vì Unpkg để chống lỗi "Failed to fetch"
-        const module = await import('https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.4.3/dist/imglyRemoveBackground.ext.esm.js');
-        const removeBackground = module.default;
+        // 1. Dùng esm.run để tự động lấy đúng file gốc, không bao giờ bị lỗi link 404
+        const module = await import('https://esm.run/@imgly/background-removal');
+        
+        // Tương thích với mọi cách xuất file của thư viện
+        const removeBackground = module.default || module.removeBackground;
 
         const blob = await new Promise(resolve => croppedCanvas.toBlob(resolve, 'image/png'));
         
-        // 2. Khai báo publicPath để AI tải chính xác dữ liệu gốc (.wasm)
+        // 2. Trỏ đường dẫn data (Model AI, Wasm) về thư mục dùng chung của jsdelivr
         const config = {
-          publicPath: 'https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.4.3/dist/',
+          publicPath: 'https://cdn.jsdelivr.net/npm/@imgly/background-removal/dist/',
           progress: (key, current, total) => {
             const p = Math.round((current / total) * 100);
             if (p > 0) {
@@ -160,7 +162,7 @@
           }
         };
 
-        // 3. Thực thi bóc tách
+        // 3. Thực thi tách nền
         const resultBlob = await removeBackground(blob, config);
 
         progressText.innerText = 'Đang ghép phông nền...';
@@ -194,6 +196,7 @@
         progressContainer.classList.add('hidden');
       }
     }
+    
     document.getElementById('btnProcess').onclick = async () => {
       if (!cropper) return alert('Vui lòng tải ảnh lên trước!');
       const mode = document.querySelector('input[name="genMode"]:checked').value;
