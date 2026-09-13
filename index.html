@@ -190,7 +190,7 @@
 
       // Khởi tạo model briaai/RMBG-1.4 với progress_callback
       if (!rmbgPipeline) {
-        rmbgPipeline = await pipeline('image-segmentation', 'briaai/RMBG-1.4', {
+        rmbgPipeline = await pipeline('image-segmentation', 'Xenova/modnet', {
           device: device,
           progress_callback: (item) => {
             if (item.status === 'progress') {
