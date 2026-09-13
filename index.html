@@ -18,68 +18,93 @@
 <body class="p-6">
   <div class="max-w-5xl mx-auto bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl">
     <h1 class="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-cyan-400 mb-6">
-      Studio Ảnh Thẻ - 4 Chế Độ Xử Lý
+      Studio Ảnh Thẻ - Tự Động Hóa AI
     </h1>
 
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-      <div class="space-y-4">
-        <!-- 1. Tải ảnh -->
-        <div>
-          <label class="block text-sm font-semibold text-slate-300 mb-1">1. Tải ảnh gốc</label>
-          <input type="file" id="fileInput" accept="image/*" class="w-full text-xs text-slate-400 file:mr-2 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-pink-600 file:text-white file:cursor-pointer" />
-        </div>
-
-        <!-- 2. Khung Cắt -->
-        <div>
-          <label class="block text-sm font-semibold text-slate-300 mb-1">2. Khung Cắt (Cropper.js)</label>
-          <!-- Tailwind CSS & Cropper CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
-  
-  <!-- THÊM DÒNG NÀY: Thư viện @imgly bản UMD ổn định nhất -->
-          <div class="grid grid-cols-2 gap-2">
-            <button id="btnCrop3x4" class="py-2 bg-pink-950/60 border border-pink-500 text-pink-200 text-xs rounded-lg font-bold">3 x 4 cm</button>
-            <button id="btnCrop4x6" class="py-2 bg-slate-800 border border-slate-700 text-slate-300 text-xs rounded-lg font-bold">4 x 6 cm</button>
+      <!-- Cột Điều Khiển -->
+      <div class="space-y-5">
+        
+        <!-- KHU VỰC 1: XỬ LÝ ẢNH ĐƠN THỦ CÔNG -->
+        <div class="p-4 bg-slate-800/50 rounded-xl border border-slate-700 space-y-4">
+          <h2 class="font-bold text-pink-400 text-sm border-b border-slate-700 pb-2">XỬ LÝ ẢNH ĐƠN (CÓ CẮT CÚP)</h2>
+          
+          <!-- 1. Tải ảnh -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">1. Tải ảnh gốc</label>
+            <input type="file" id="fileInput" accept="image/*" class="w-full text-xs text-slate-400 file:mr-2 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-pink-600 file:text-white file:cursor-pointer" />
           </div>
-        </div>
 
-        <!-- 3. Màu Nền -->
-        <div>
-          <label class="block text-sm font-semibold text-slate-300 mb-1">3. Màu Nền Thẻ</label>
-          <div class="grid grid-cols-2 gap-2">
-            <label class="flex items-center gap-2 p-2 bg-slate-800 rounded-lg cursor-pointer border border-slate-700">
-              <input type="radio" name="bgColor" value="#ffffff" checked class="text-pink-500" />
-              <span class="w-4 h-4 bg-white rounded-full border"></span>
-              <span class="text-xs">Trắng</span>
-            </label>
-            <label class="flex items-center gap-2 p-2 bg-slate-800 rounded-lg cursor-pointer border border-slate-700">
-              <input type="radio" name="bgColor" value="#0066cc" class="text-pink-500" />
-              <span class="w-4 h-4 bg-[#0066cc] rounded-full border"></span>
-              <span class="text-xs">Xanh thẻ</span>
-            </label>
+          <!-- 2. Khung Cắt -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">2. Khung Cắt (Cropper.js)</label>
+            <div class="grid grid-cols-2 gap-2">
+              <button id="btnCrop3x4" class="py-2 bg-pink-950/60 border border-pink-500 text-pink-200 text-xs rounded-lg font-bold">3 x 4 cm</button>
+              <button id="btnCrop4x6" class="py-2 bg-slate-800 border border-slate-700 text-slate-300 text-xs rounded-lg font-bold">4 x 6 cm</button>
+            </div>
           </div>
+          
+          <button id="btnProcess" class="w-full py-2.5 bg-gradient-to-r from-pink-600 to-cyan-600 hover:from-pink-500 hover:to-cyan-500 font-bold text-sm rounded-lg shadow-lg transition-all">
+            ÁP DỤNG XỬ LÝ
+          </button>
+          
+          <!-- Nút Tải Xuống (Ảnh đơn) -->
+          <button id="btnDownload" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 font-bold text-sm rounded-lg shadow-lg transition-all hidden">
+            ⬇️ TẢI ẢNH VỀ (.JPG)
+          </button>
         </div>
 
-        <!-- 4. Chế Độ Xử Lý -->
-        <div>
-          <label class="block text-sm font-semibold text-slate-300 mb-1">4. Chế Độ Xử Lý</label>
-          <div class="space-y-2">
+        <!-- CÀI ĐẶT CHUNG (Màu nền & Chế độ) -->
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-semibold text-slate-300 mb-1">Màu Nền Thẻ (Áp dụng chung)</label>
+            <div class="grid grid-cols-2 gap-2">
+              <label class="flex items-center gap-2 p-2 bg-slate-800 rounded-lg cursor-pointer border border-slate-700">
+                <input type="radio" name="bgColor" value="#ffffff" checked class="text-pink-500" />
+                <span class="w-4 h-4 bg-white rounded-full border"></span>
+                <span class="text-xs">Trắng</span>
+              </label>
+              <label class="flex items-center gap-2 p-2 bg-slate-800 rounded-lg cursor-pointer border border-slate-700">
+                <input type="radio" name="bgColor" value="#0066cc" class="text-pink-500" />
+                <span class="w-4 h-4 bg-[#0066cc] rounded-full border"></span>
+                <span class="text-xs">Xanh thẻ</span>
+              </label>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-semibold text-slate-300 mb-1">Chế Độ Xử Lý</label>
             <label class="flex items-start gap-2 p-2.5 bg-cyan-950/40 rounded-lg border border-cyan-500/70 cursor-pointer">
               <input type="radio" name="genMode" value="mode4" checked class="mt-1 text-cyan-400" />
               <div>
-                <div class="text-xs font-bold text-cyan-300">Chế độ 4: Tách nền AI Siêu nét (@imgly)</div>
+                <div class="text-xs font-bold text-cyan-300">Tách nền AI Siêu nét (@imgly)</div>
                 <div class="text-[11px] text-slate-400">Không lỗi bản quyền • 0 Token</div>
               </div>
             </label>
           </div>
         </div>
 
-        <button id="btnProcess" class="w-full py-3 bg-gradient-to-r from-pink-600 to-cyan-600 hover:from-pink-500 hover:to-cyan-500 font-bold text-sm rounded-xl shadow-lg transition-all">
-          ÁP DỤNG XỬ LÝ ẢNH THẺ
-        </button>
+        <!-- KHU VỰC 2: XỬ LÝ HÀNG LOẠT -->
+        <div class="p-4 bg-slate-800/80 rounded-xl border border-emerald-600/50 space-y-4">
+          <h2 class="font-bold text-emerald-400 text-sm border-b border-emerald-800/50 pb-2">⚡ XỬ LÝ HÀNG LOẠT (TỰ ĐỘNG)</h2>
+          
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Chọn nhiều ảnh cùng lúc</label>
+            <!-- Thêm thuộc tính multiple để chọn nhiều file -->
+            <input type="file" id="batchFileInput" accept="image/*" multiple class="w-full text-xs text-slate-400 file:mr-2 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-emerald-600 file:text-white file:cursor-pointer" />
+          </div>
 
-        <!-- Progress Bar -->
+          <button id="btnBatchProcess" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 font-bold text-sm rounded-lg shadow-lg transition-all">
+            🚀 XỬ LÝ & TẢI VỀ TẤT CẢ
+          </button>
+
+          <!-- Hiển thị tiến trình Batch -->
+          <div id="batchProgressText" class="text-xs font-mono text-emerald-300 text-center hidden">
+            Đang chuẩn bị...
+          </div>
+        </div>
+
+        <!-- Progress Bar (Chung) -->
         <div id="progressContainer" class="hidden bg-slate-800 border border-cyan-500/40 rounded-xl p-3">
           <div class="flex justify-between text-xs mb-1 text-cyan-300 font-mono">
             <span id="progressText">Đang tải...</span>
@@ -93,10 +118,13 @@
 
       <!-- Xem Trước -->
       <div class="md:col-span-2 flex flex-col gap-4">
-        <div class="h-[420px] bg-black/50 border border-slate-800 rounded-2xl overflow-hidden flex items-center justify-center relative">
+        <div class="h-[550px] bg-black/50 border border-slate-800 rounded-2xl overflow-hidden flex items-center justify-center relative">
           <img id="imagePreview" class="max-h-full max-w-full hidden" />
           <canvas id="outputCanvas" class="hidden max-h-full shadow-lg rounded-lg"></canvas>
-          <div id="placeholderText" class="text-slate-500 text-sm">Vui lòng tải ảnh lên để bắt đầu</div>
+          <div id="placeholderText" class="text-slate-500 text-sm text-center">
+            Vui lòng tải ảnh lên để bắt đầu<br>
+            <span class="text-xs text-slate-600">(Hoặc dùng chức năng Xử lý hàng loạt bên trái)</span>
+          </div>
         </div>
       </div>
     </div>
@@ -105,6 +133,7 @@
   <script type="module">
     let cropper = null;
     let currentRatio = 3 / 4;
+    let singleOriginalName = "anhthe"; // Lưu tên file của ảnh đơn
 
     const fileInput = document.getElementById('fileInput');
     const imagePreview = document.getElementById('imagePreview');
@@ -114,14 +143,27 @@
     const progressText = document.getElementById('progressText');
     const progressPercent = document.getElementById('progressPercent');
     const progressBar = document.getElementById('progressBar');
+    
+    const btnDownload = document.getElementById('btnDownload');
+    const batchFileInput = document.getElementById('batchFileInput');
+    const btnBatchProcess = document.getElementById('btnBatchProcess');
+    const batchProgressText = document.getElementById('batchProgressText');
 
+    // ==========================================
+    // LOGIC 1: XỬ LÝ ẢNH ĐƠN LẺ
+    // ==========================================
     fileInput.addEventListener('change', (e) => {
       const file = e.target.files[0];
       if (!file) return;
+      
+      // Lấy tên file gốc (Bỏ đuôi mở rộng)
+      singleOriginalName = file.name.replace(/\.[^/.]+$/, "");
+
       const reader = new FileReader();
       reader.onload = (event) => {
         placeholderText.classList.add('hidden');
         outputCanvas.classList.add('hidden');
+        btnDownload.classList.add('hidden');
         imagePreview.classList.remove('hidden');
         imagePreview.src = event.target.result;
         if (cropper) cropper.destroy();
@@ -133,7 +175,7 @@
     document.getElementById('btnCrop3x4').onclick = () => { currentRatio = 3/4; if (cropper) cropper.setAspectRatio(3/4); };
     document.getElementById('btnCrop4x6').onclick = () => { currentRatio = 4/6; if (cropper) cropper.setAspectRatio(4/6); };
 
-// Xử lý bằng @imgly (Tự động phân giải Module cực mạnh)
+    // Tách nền ảnh đơn
     async function processMode4_Imgly(croppedCanvas, targetBgHex) {
       progressContainer.classList.remove('hidden');
       progressText.innerText = 'Đang nạp AI bóc tách nền...';
@@ -146,7 +188,6 @@
 
         const blob = await new Promise(resolve => croppedCanvas.toBlob(resolve, 'image/png'));
         
-        // CẤU HÌNH ĐÃ SỬA: Đã xóa publicPath để AI tự động trỏ về máy chủ chứa Model của Imgly
         const config = {
           progress: (key, current, total) => {
             const p = Math.round((current / total) * 100);
@@ -184,6 +225,9 @@
         imagePreview.classList.add('hidden');
         if (cropper) cropper.destroy();
         outputCanvas.classList.remove('hidden');
+        
+        // Hiện nút tải xuống
+        btnDownload.classList.remove('hidden');
 
       } catch (error) {
         console.error(error);
@@ -192,14 +236,85 @@
       }
     }
     
+    // Nút Bấm Xử lý ảnh đơn
     document.getElementById('btnProcess').onclick = async () => {
       if (!cropper) return alert('Vui lòng tải ảnh lên trước!');
-      const mode = document.querySelector('input[name="genMode"]:checked').value;
       const targetBg = document.querySelector('input[name="bgColor"]:checked').value;
       const croppedCanvas = cropper.getCroppedCanvas();
+      await processMode4_Imgly(croppedCanvas, targetBg);
+    };
 
-      if (mode === 'mode4') {
-        await processMode4_Imgly(croppedCanvas, targetBg);
+    // Tải xuống ảnh đơn (Định dạng JPG, Tên gốc)
+    btnDownload.onclick = () => {
+      const dataUrl = outputCanvas.toDataURL('image/jpeg', 1.0); // 1.0 là chất lượng cao nhất
+      const link = document.createElement('a');
+      link.download = `${singleOriginalName}.jpg`;
+      link.href = dataUrl;
+      link.click();
+    };
+
+    // ==========================================
+    // LOGIC 2: XỬ LÝ HÀNG LOẠT (BATCH PROCESSING)
+    // ==========================================
+    btnBatchProcess.onclick = async () => {
+      const files = batchFileInput.files;
+      if (files.length === 0) return alert('Vui lòng chọn ít nhất 1 ảnh ở khu vực Xử lý hàng loạt!');
+      
+      const targetBg = document.querySelector('input[name="bgColor"]:checked').value;
+      batchProgressText.classList.remove('hidden');
+      
+      try {
+        batchProgressText.innerText = `Đang nạp AI bóc tách nền...`;
+        // Tải thư viện 1 lần duy nhất để dùng cho vòng lặp
+        const module = await import('https://esm.run/@imgly/background-removal');
+        const removeBackground = module.default || module.removeBackground;
+
+        // Bắt đầu vòng lặp qua từng file ảnh
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+          const originalName = file.name.replace(/\.[^/.]+$/, ""); // Lấy tên gốc bỏ đuôi
+          
+          batchProgressText.innerText = `Đang xử lý ${i + 1}/${files.length} ảnh: ${file.name}...`;
+          
+          // 1. Tách nền (truyền thẳng object File vào imgly)
+          const resultBlob = await removeBackground(file);
+          
+          // 2. Load ảnh trong suốt lên bộ nhớ tạm
+          const img = new Image();
+          const url = URL.createObjectURL(resultBlob);
+          img.src = url;
+          await new Promise(resolve => img.onload = resolve);
+          
+          // 3. Tạo Canvas ẩn (Giữ nguyên kích thước gốc của ảnh, không crop)
+          const tempCanvas = document.createElement('canvas');
+          tempCanvas.width = img.width;
+          tempCanvas.height = img.height;
+          const ctx = tempCanvas.getContext('2d');
+          
+          // 4. Ghép nền và vẽ ảnh
+          ctx.fillStyle = targetBg;
+          ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+          ctx.drawImage(img, 0, 0);
+          URL.revokeObjectURL(url); // Dọn dẹp RAM
+          
+          // 5. Kích hoạt tải xuống tự động (JPG)
+          const dataUrl = tempCanvas.toDataURL('image/jpeg', 1.0);
+          const link = document.createElement('a');
+          link.download = `${originalName}.jpg`; // Đúng tên gốc + .jpg
+          link.href = dataUrl;
+          link.click();
+          
+          // Tạm nghỉ 0.5s giữa các ảnh để trình duyệt kịp xử lý lệnh tải xuống
+          await new Promise(r => setTimeout(r, 500));
+        }
+        
+        batchProgressText.innerText = `✅ Đã hoàn tất xử lý & tải về ${files.length} ảnh!`;
+        alert(`Hoàn tất xử lý ${files.length} ảnh! Vui lòng kiểm tra thư mục Download của máy tính.`);
+        
+      } catch (error) {
+        console.error(error);
+        alert('Lỗi khi xử lý hàng loạt: ' + error.message);
+        batchProgressText.innerText = `❌ Xử lý thất bại!`;
       }
     };
   </script>
