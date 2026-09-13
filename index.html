@@ -133,31 +133,35 @@
     document.getElementById('btnCrop3x4').onclick = () => { currentRatio = 3/4; if (cropper) cropper.setAspectRatio(3/4); };
     document.getElementById('btnCrop4x6').onclick = () => { currentRatio = 4/6; if (cropper) cropper.setAspectRatio(4/6); };
 
-    // Xử lý bằng @imgly (Đã fix lỗi tải Module và thêm publicPath)
+    // Xử lý bằng @imgly (JSdelivr ESM + Cấu hình PublicPath chuẩn)
     async function processMode4_Imgly(croppedCanvas, targetBgHex) {
       progressContainer.classList.remove('hidden');
-      progressText.innerText = 'Đang khởi tạo AI bóc tách nền...';
-      progressBar.style.width = '10%';
-      progressPercent.innerText = '10%';
+      progressText.innerText = 'Đang nạp AI bóc tách nền...';
+      progressBar.style.width = '5%';
+      progressPercent.innerText = '5%';
 
       try {
+        // 1. Dùng JSdelivr thay vì Unpkg để chống lỗi "Failed to fetch"
+        const module = await import('https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.4.3/dist/imglyRemoveBackground.ext.esm.js');
+        const removeBackground = module.default;
+
         const blob = await new Promise(resolve => croppedCanvas.toBlob(resolve, 'image/png'));
         
-        // Cấu hình đường dẫn tải Model bắt buộc phải có khi dùng CDN
+        // 2. Khai báo publicPath để AI tải chính xác dữ liệu gốc (.wasm)
         const config = {
           publicPath: 'https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.4.3/dist/',
           progress: (key, current, total) => {
             const p = Math.round((current / total) * 100);
             if (p > 0) {
-              progressText.innerText = `Đang bóc tách AI... (${p}%)`;
+              progressText.innerText = `Đang bóc tách AI...`;
               progressBar.style.width = `${p}%`;
               progressPercent.innerText = `${p}%`;
             }
           }
         };
 
-        // Sử dụng hàm imglyRemoveBackground từ thẻ script ở trên
-        const resultBlob = await imglyRemoveBackground(blob, config);
+        // 3. Thực thi bóc tách
+        const resultBlob = await removeBackground(blob, config);
 
         progressText.innerText = 'Đang ghép phông nền...';
         progressBar.style.width = '100%';
@@ -190,7 +194,6 @@
         progressContainer.classList.add('hidden');
       }
     }
-
     document.getElementById('btnProcess').onclick = async () => {
       if (!cropper) return alert('Vui lòng tải ảnh lên trước!');
       const mode = document.querySelector('input[name="genMode"]:checked').value;
