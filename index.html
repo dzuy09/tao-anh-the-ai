@@ -131,12 +131,14 @@
   </div>
 
 <script type="module">
-  // FIX 1: Xóa số phiên bản đuôi để luôn lấy bản Stable mới nhất
+  // Nhập thư viện v3 mới nhất
   import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers';
 
+  // 1. BẢO MẬT: Chặn load local
   env.allowLocalModels = false;
-  // DÁN MÃ TOKEN HUGGING FACE CỦA BẠN VÀO GIỮA 2 DẤU NHÁY ĐƠN BÊN DƯỚI:
-  env.token = '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';
+  
+  // 2. CHỐT HẠ: Tuyệt đối KHÔNG DÙNG env.token ở đây để Hugging Face không chặn nhầm.
+  // (Đã xóa dòng env.token)
 
   let cropper = null;
   let currentRatio = 3 / 4;
@@ -188,7 +190,7 @@
   if (btn4x6) btn4x6.onclick = () => { currentRatio = 4/6; if (cropper) cropper.setAspectRatio(4/6); };
 
   // ==========================================
-  // KHỞI TẠO AI (Dùng chính hãng briaai/RMBG-1.4 + Token)
+  // KHỞI TẠO AI (Bản Public 100% - Không Token)
   // ==========================================
   async function getAIPipeline() {
     if (segmenter) return segmenter;
@@ -206,34 +208,27 @@
       } catch (err) {}
     }
 
-    // ĐÃ SỬA: Quay về model gốc xịn nhất + Đã có Token bảo kê ở trên
-    const modelId = 'briaai/RMBG-1.4';
+    // ĐÃ SỬA: Dùng onnx-community/rmbg-1.4 (Hoàn toàn mở, sẽ không kích hoạt lỗi Segformer)
+    const modelId = 'onnx-community/rmbg-1.4';
     
+    const pipelineOptions = {
+      device: device,
+      progress_callback: (item) => {
+        if (item && item.status === 'progress') {
+          const p = Math.round(item.progress || 0);
+          if (progressText) progressText.innerText = `Đang tải Model AI (${device.toUpperCase()})...`;
+          if (progressBar) progressBar.style.width = `${p}%`;
+          if (progressPercent) progressPercent.innerText = `${p}%`;
+        }
+      }
+    };
+
     try {
-      segmenter = await pipeline('image-segmentation', modelId, {
-        device: device,
-        progress_callback: (item) => {
-          if (item && item.status === 'progress') {
-            const p = Math.round(item.progress || 0);
-            if (progressText) progressText.innerText = `Đang tải Model AI (${device.toUpperCase()})...`;
-            if (progressBar) progressBar.style.width = `${p}%`;
-            if (progressPercent) progressPercent.innerText = `${p}%`;
-          }
-        }
-      });
+      segmenter = await pipeline('image-segmentation', modelId, pipelineOptions);
     } catch (error) {
-      console.warn('Khởi tạo WebGPU thất bại, thử lại với WASM:', error);
-      segmenter = await pipeline('image-segmentation', modelId, {
-        device: 'wasm',
-        progress_callback: (item) => {
-          if (item && item.status === 'progress') {
-            const p = Math.round(item.progress || 0);
-            if (progressText) progressText.innerText = `Đang tải Model AI (WASM)...`;
-            if (progressBar) progressBar.style.width = `${p}%`;
-            if (progressPercent) progressPercent.innerText = `${p}%`;
-          }
-        }
-      });
+      console.warn('Khởi tạo WebGPU thất bại, tự động chuyển về WASM:', error);
+      pipelineOptions.device = 'wasm';
+      segmenter = await pipeline('image-segmentation', modelId, pipelineOptions);
     }
     return segmenter;
   }
@@ -329,7 +324,6 @@
 
         if (progressContainer) progressContainer.classList.add('hidden');
         
-        // Cập nhật lại tính năng tải ảnh đơn giữ nguyên tên
         if (btnDownload && fileInput.files.length > 0) {
           btnDownload.classList.remove('hidden');
           const originalName = fileInput.files[0].name.replace(/\.[^/.]+$/, "");
