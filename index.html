@@ -9,22 +9,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
   
-  <!-- CÚ CHỐT 1: Bắt sự kiện tải xong lõi C++ (WebAssembly) -->
-  <script>
-    window.isOpenCvReady = false;
-    var Module = {
-      onRuntimeInitialized: function() {
-        window.isOpenCvReady = true;
-        const btn = document.getElementById('btnApplyInpaint');
-        if (btn && btn.innerText.includes('Đang tải')) {
-           btn.innerText = '✨ Xóa Mộc Ngay';
-           btn.disabled = false;
-           btn.classList.remove('opacity-50', 'cursor-not-allowed');
-        }
-      }
-    };
-  </script>
-  <!-- CÚ CHỐT 2: Đổi sang máy chủ Cloudflare siêu tốc -->
+  <!-- Tải OpenCV qua Cloudflare (Bỏ phần bắt sự kiện cũ bị lỗi) -->
   <script async src="https://cdnjs.cloudflare.com/ajax/libs/opencv.js/4.8.0/opencv.min.js" type="text/javascript"></script>
 
   <style>
@@ -49,7 +34,7 @@
           
           <div class="grid grid-cols-2 gap-2">
             <button id="btnToggleBrush" class="py-2 bg-slate-700 hover:bg-slate-600 border border-slate-600 text-white text-xs rounded-lg font-bold transition-all">🖌️ Bật Cọ Vẽ</button>
-            <button id="btnApplyInpaint" class="py-2 bg-rose-600 hover:bg-rose-500 text-white text-xs rounded-lg font-bold transition-all opacity-50 cursor-not-allowed" disabled>✨ Xóa Mộc Ngay</button>
+            <button id="btnApplyInpaint" class="py-2 bg-rose-600 hover:bg-rose-500 text-white text-xs rounded-lg font-bold transition-all opacity-50 cursor-not-allowed" disabled>⏳ Đang tải thuật toán...</button>
           </div>
           
           <div id="brushTools" class="hidden bg-slate-900 p-2 rounded-lg border border-slate-700">
@@ -171,6 +156,27 @@
     const brushSizeLabel = document.getElementById('brushSizeLabel');
 
     // ==========================================
+    // CÚ CHỐT: RADAR QUÉT OPENCV LIÊN TỤC
+    // ==========================================
+    window.isOpenCvReady = false;
+    const cvChecker = setInterval(() => {
+      // Quét xem đối tượng 'cv' và hàm 'Mat' đã xuất hiện trong bộ nhớ chưa
+      if (typeof window.cv !== 'undefined' && window.cv.Mat) {
+        window.isOpenCvReady = true;
+        clearInterval(cvChecker); // Tắt radar khi đã tìm thấy
+        
+        // Bật sáng nút Xóa Mộc
+        if (btnApplyInpaint.innerText.includes('Đang tải')) {
+           btnApplyInpaint.innerText = '✨ Xóa Mộc Ngay';
+           if (isBrushMode) {
+             btnApplyInpaint.disabled = false;
+             btnApplyInpaint.classList.remove('opacity-50', 'cursor-not-allowed');
+           }
+        }
+      }
+    }, 500); // Quét mỗi 0.5 giây
+
+    // ==========================================
     // LOGIC CỌ VẼ & XÓA MỘC (OPENCV OFFLINE)
     // ==========================================
     let isBrushMode = false;
@@ -192,7 +198,6 @@
         btnToggleBrush.classList.replace('bg-slate-700', 'bg-rose-900');
         brushTools.classList.remove('hidden');
         
-        // Kiểm tra xem OpenCV đã sẵn sàng chưa
         if (window.isOpenCvReady) {
             btnApplyInpaint.disabled = false;
             btnApplyInpaint.classList.remove('opacity-50', 'cursor-not-allowed');
@@ -257,7 +262,6 @@
     drawCanvas.addEventListener('mouseup', () => isDrawing = false);
     drawCanvas.addEventListener('mouseout', () => isDrawing = false);
 
-    // GỌI THUẬT TOÁN OPENCV XÓA MỘC OFFLINE
     btnApplyInpaint.onclick = async () => {
       if (!window.isOpenCvReady) {
         return alert('Lõi thuật toán vẫn đang tải. Vui lòng chờ nút bấm chuyển sang "Xóa Mộc Ngay" nhé!');
@@ -268,7 +272,6 @@
       progressBar.style.width = '50%';
       progressPercent.innerText = '50%';
 
-      // Dùng setTimeout để giao diện cập nhật thanh Loading trước khi lõi C++ chạy (chống đơ trình duyệt)
       setTimeout(() => {
         try {
           const srcCanvas = document.createElement('canvas');
@@ -276,19 +279,19 @@
           srcCanvas.height = imagePreview.naturalHeight;
           srcCanvas.getContext('2d').drawImage(imagePreview, 0, 0);
 
-          let srcMatRGBA = cv.imread(srcCanvas);
-          let srcMatRGB = new cv.Mat();
-          cv.cvtColor(srcMatRGBA, srcMatRGB, cv.COLOR_RGBA2RGB); 
+          let srcMatRGBA = window.cv.imread(srcCanvas);
+          let srcMatRGB = new window.cv.Mat();
+          window.cv.cvtColor(srcMatRGBA, srcMatRGB, window.cv.COLOR_RGBA2RGB); 
 
-          let maskMat = cv.imread(drawCanvas);
-          let maskGray = new cv.Mat();
-          cv.cvtColor(maskMat, maskGray, cv.COLOR_RGBA2GRAY, 0); 
+          let maskMat = window.cv.imread(drawCanvas);
+          let maskGray = new window.cv.Mat();
+          window.cv.cvtColor(maskMat, maskGray, window.cv.COLOR_RGBA2GRAY, 0); 
 
-          let dstMat = new cv.Mat();
+          let dstMat = new window.cv.Mat();
           const radius = 5; 
-          cv.inpaint(srcMatRGB, maskGray, dstMat, radius, cv.INPAINT_TELEA);
+          window.cv.inpaint(srcMatRGB, maskGray, dstMat, radius, window.cv.INPAINT_TELEA);
 
-          cv.imshow(srcCanvas, dstMat);
+          window.cv.imshow(srcCanvas, dstMat);
           imagePreview.src = srcCanvas.toDataURL('image/jpeg', 1.0);
           
           srcMatRGBA.delete(); srcMatRGB.delete(); maskMat.delete(); maskGray.delete(); dstMat.delete();
