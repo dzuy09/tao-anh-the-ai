@@ -126,7 +126,7 @@
 
   <script type="module">
     // ==========================================
-    // TIÊM OPENCV TRỰC TIẾP (CHUẨN GIẢI MÃ PROMISE WASM)
+    // TIÊM OPENCV TRỰC TIẾP (BẢN 3.4.0 THUẦN JS - CHỐNG CHẶN)
     // ==========================================
     window.isOpenCvReady = false;
     window.isBrushMode = false;
@@ -144,31 +144,33 @@
 
     const loadOpenCV = () => {
       const script = document.createElement('script');
-      script.src = 'https://docs.opencv.org/4.8.0/opencv.js';
+      // Dùng Cloudflare siêu tốc, phiên bản thuần JS không dính lỗi WebAssembly
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/opencv.js/3.4.0/opencv.js';
       script.async = true;
+      
       script.onload = () => {
-        // Xử lý lõi WebAssembly trả về Promise
-        if (typeof cv === 'function' || cv instanceof Promise) {
-            Promise.resolve(cv()).then(target => {
+        const checkReady = setInterval(() => {
+          if (typeof cv !== 'undefined' && cv.Mat) {
+            clearInterval(checkReady);
+            window.isOpenCvReady = true;
+            activateInpaintButton();
+          } else if (typeof cv === 'function') {
+            // Xử lý nốt nếu nó kẹt ở dạng Promise (phòng hờ)
+            cv().then(target => {
                 window.cv = target;
                 window.isOpenCvReady = true;
                 activateInpaintButton();
-            }).catch(err => console.error("Lỗi WebAssembly:", err));
-        } else if (cv && cv.Mat) {
-            window.isOpenCvReady = true;
-            activateInpaintButton();
-        } else if (cv) {
-            cv['onRuntimeInitialized'] = () => {
-                window.isOpenCvReady = true;
-                activateInpaintButton();
-            };
-        }
+                clearInterval(checkReady);
+            }).catch(()=>{});
+          }
+        }, 200);
       };
-      script.onerror = () => alert("Lỗi mạng: Không thể tải thư viện OpenCV.");
+      
+      script.onerror = () => alert("Lỗi mạng: Trình duyệt vẫn đang chặn tải. Hãy thử mở bằng tab Ẩn danh (Ctrl+Shift+N) nhé!");
       document.body.appendChild(script);
     };
     
-    // Khởi chạy tiêm thư viện ngay lập tức
+    // Gọi tải thuật toán ngay lập tức
     loadOpenCV();
 
     import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers';
