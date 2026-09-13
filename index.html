@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tạo Ảnh Thẻ Pro - 4 Chế Độ Tách Nền AI</title>
+  
+  <!-- Tailwind CSS & Cropper CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
+
+  <style>
+    body { background-color: #0f172a; color: #f8fafc; font-family: system-ui, sans-serif; }
+    .cropper-view-box { outline: 2px solid #ec4899 !important; }
+    .cropper-point { background-color: #f43f5e !important; }
+  </style>
+</head>
+<body class="p-6">
+  <div class="max-w-5xl mx-auto bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl">
+    <h1 class="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-cyan-400 mb-6">
+      Studio Ảnh Thẻ - 4 Chế Độ Xử Lý
+    </h1>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <!-- Cột Điều Khiển -->
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-semibold text-slate-300 mb-1">1. Tải ảnh gốc</label>
+          <input type="file" id="fileInput" accept="image/*" class="w-full text-xs text-slate-400 file:mr-2 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-pink-600 file:text-white file:cursor-pointer" />
+        </div>
+
+        <!-- Chọn tỷ lệ cắt -->
+        <div>
+          <label class="block text-sm font-semibold text-slate-300 mb-1">2. Khung Cắt (Cropper.js)</label>
+          <div class="grid grid-cols-2 gap-2">
+            <button id="btnCrop3x4" class="py-2 bg-pink-950/60 border border-pink-500 text-pink-200 text-xs rounded-lg font-bold">3 x 4 cm</button>
+            <button id="btnCrop4x6" class="py-2 bg-slate-800 border border-slate-700 text-slate-300 text-xs rounded-lg font-bold">4 x 6 cm</button>
+          </div>
+        </div>
+
+        <!-- Chọn màu nền -->
+        <div>
+          <label class="block text-sm font-semibold text-slate-300 mb-1">3. Màu Nền Thẻ</label>
+          <div class="grid grid-cols-2 gap-2">
+            <label class="flex items-center gap-2 p-2 bg-slate-800 rounded-lg cursor-pointer border border-slate-700">
+              <input type="radio" name="bgColor" value="#ffffff" checked class="text-pink-500" />
+              <span class="w-4 h-4 bg-white rounded-full border"></span>
+              <span class="text-xs">Trắng</span>
+            </label>
+            <label class="flex items-center gap-2 p-2 bg-slate-800 rounded-lg cursor-pointer border border-slate-700">
+              <input type="radio" name="bgColor" value="#0066cc" class="text-pink-500" />
+              <span class="w-4 h-4 bg-[#0066cc] rounded-full border"></span>
+              <span class="text-xs">Xanh thẻ</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- 4 Chế Độ Tách Nền -->
+        <div>
+          <label class="block text-sm font-semibold text-slate-300 mb-1">4. Chế Độ Xử Lý</label>
+          <div class="space-y-2">
+            <label class="flex items-start gap-2 p-2.5 bg-slate-800/80 rounded-lg border border-slate-700 cursor-pointer">
+              <input type="radio" name="genMode" value="mode1" class="mt-1" />
+              <div>
+                <div class="text-xs font-bold text-emerald-400">Chế độ 1: Offline Canvas (0 Token)</div>
+                <div class="text-[11px] text-slate-400">Tách màu đường biên nhanh 0.05s</div>
+              </div>
+            </label>
+
+            <label class="flex items-start gap-2 p-2.5 bg-slate-800/80 rounded-lg border border-slate-700 cursor-pointer">
+              <input type="radio" name="genMode" value="mode2" class="mt-1" />
+              <div>
+                <div class="text-xs font-bold text-pink-400">Chế độ 2: AI Flash-Lite (Cloud)</div>
+                <div class="text-[11px] text-slate-400">Tạo ảnh nhanh, tiết kiệm Token</div>
+              </div>
+            </label>
+
+            <label class="flex items-start gap-2 p-2.5 bg-slate-800/80 rounded-lg border border-slate-700 cursor-pointer">
+              <input type="radio" name="genMode" value="mode3" class="mt-1" />
+              <div>
+                <div class="text-xs font-bold text-purple-400">Chế độ 3: AI Studio HD (Pro Lab 1K)</div>
+                <div class="text-[11px] text-slate-400">Đổi trang phục vest/sơ mi & làm nét</div>
+              </div>
+            </label>
+
+            <label class="flex items-start gap-2 p-2.5 bg-cyan-950/40 rounded-lg border border-cyan-500/70 cursor-pointer">
+              <input type="radio" name="genMode" value="mode4" checked class="mt-1 text-cyan-400" />
+              <div>
+                <div class="text-xs font-bold text-cyan-300">Chế độ 4: Tách nền AI Siêu nét (RMBG-1.4)</div>
+                <div class="text-[11px] text-slate-400">Model briaai/RMBG-1.4 qua WebGPU • 0 Token</div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <button id="btnProcess" class="w-full py-3 bg-gradient-to-r from-pink-600 to-cyan-600 hover:from-pink-500 hover:to-cyan-500 font-bold text-sm rounded-xl shadow-lg transition-all">
+          ÁP DỤNG XỬ LÝ ẢNH THẺ
+        </button>
+
+        <!-- Progress Bar cho Model RMBG-1.4 -->
+        <div id="progressContainer" class="hidden bg-slate-800 border border-cyan-500/40 rounded-xl p-3">
+          <div class="flex justify-between text-xs mb-1 text-cyan-300 font-mono">
+            <span id="progressText">Đang tải model RMBG-1.4...</span>
+            <span id="progressPercent">0%</span>
+          </div>
+          <div class="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
+            <div id="progressBar" class="h-full bg-cyan-400 transition-all duration-200" style="width: 0%"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Vùng Xem Trước (Cropper & Kết Quả) -->
+      <div class="md:col-span-2 flex flex-col gap-4">
+        <div class="h-[420px] bg-black/50 border border-slate-800 rounded-2xl overflow-hidden flex items-center justify-center relative">
+          <img id="imagePreview" class="max-h-full max-w-full hidden" />
+          <canvas id="outputCanvas" class="hidden max-h-full shadow-lg rounded-lg"></canvas>
+          <div id="placeholderText" class="text-slate-500 text-sm">Vui lòng tải ảnh lên để bắt đầu</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    let cropper = null;
+    let currentRatio = 3 / 4;
+    let rmbgPipeline = null;
+
+    const fileInput = document.getElementById('fileInput');
+    const imagePreview = document.getElementById('imagePreview');
+    const outputCanvas = document.getElementById('outputCanvas');
+    const placeholderText = document.getElementById('placeholderText');
+    const progressContainer = document.getElementById('progressContainer');
+    const progressText = document.getElementById('progressText');
+    const progressPercent = document.getElementById('progressPercent');
+    const progressBar = document.getElementById('progressBar');
+
+    // 1. Tải ảnh & Khởi tạo Cropper.js
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        placeholderText.classList.add('hidden');
+        outputCanvas.classList.add('hidden');
+        imagePreview.classList.remove('hidden');
+        imagePreview.src = event.target.result;
+
+        if (cropper) cropper.destroy();
+        cropper = new Cropper(imagePreview, {
+          aspectRatio: currentRatio,
+          viewMode: 1,
+          autoCropArea: 0.9,
+          responsive: true
+        });
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // 2. Chuyển đổi tỉ lệ 3x4 / 4x6
+    document.getElementById('btnCrop3x4').onclick = () => {
+      currentRatio = 3 / 4;
+      if (cropper) cropper.setAspectRatio(3 / 4);
+    };
+    document.getElementById('btnCrop4x6').onclick = () => {
+      currentRatio = 4 / 6;
+      if (cropper) cropper.setAspectRatio(4 / 6);
+    };
+
+    // 3. Xử lý Chế độ 4: RMBG-1.4 (WebGPU/WASM qua @huggingface/transformers)
+    async function processMode4_RMBG(croppedCanvas, targetBgHex) {
+      progressContainer.classList.remove('hidden');
+      progressText.innerText = 'Đang nạp Transformers.js từ CDN...';
+      progressBar.style.width = '10%';
+      progressPercent.innerText = '10%';
+
+      // Lazy load thư viện qua CDN
+      const { pipeline, env } = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.3.3');
+      env.allowLocalModels = false;
+
+      // Kiểm tra WebGPU
+      let device = 'wasm';
+      if (navigator.gpu) {
+        try {
+          const adapter = await navigator.gpu.requestAdapter();
+          if (adapter) device = 'webgpu';
+        } catch (_) {}
+      }
+
+      // Khởi tạo model briaai/RMBG-1.4 với progress_callback
+      if (!rmbgPipeline) {
+        rmbgPipeline = await pipeline('image-segmentation', 'briaai/RMBG-1.4', {
+          device: device,
+          progress_callback: (item) => {
+            if (item.status === 'progress') {
+              const p = Math.round(item.progress || 0);
+              progressText.innerText = `Đang tải Model AI RMBG-1.4 (~40-80MB)...`;
+              progressPercent.innerText = `${p}%`;
+              progressBar.style.width = `${p}%`;
+            } else if (item.status === 'done') {
+              progressText.innerText = 'Đã tải xong model!';
+            }
+          }
+        });
+      }
+
+      progressText.innerText = `Đang bóc tách nền AI (${device.toUpperCase()})...`;
+      progressBar.style.width = '95%';
+      progressPercent.innerText = '95%';
+
+      const croppedDataUrl = croppedCanvas.toDataURL('image/png');
+      const output = await rmbgPipeline(croppedDataUrl);
+
+      // Kết quả RGBA trong suốt ghép lên nền màu đã chọn
+      const fgCanvas = output.toCanvas ? output.toCanvas() : croppedCanvas;
+      
+      const targetW = currentRatio === 3 / 4 ? 900 : 1200;
+      const targetH = currentRatio === 3 / 4 ? 1200 : 1800;
+
+      outputCanvas.width = targetW;
+      outputCanvas.height = targetH;
+      const ctx = outputCanvas.getContext('2d');
+
+      // Vẽ màu nền
+      ctx.fillStyle = targetBgHex;
+      ctx.fillRect(0, 0, targetW, targetH);
+
+      // Vẽ chủ thể
+      ctx.drawImage(fgCanvas, 0, 0, targetW, targetH);
+
+      progressContainer.classList.add('hidden');
+      imagePreview.classList.add('hidden');
+      if (cropper) cropper.destroy();
+      outputCanvas.classList.remove('hidden');
+    }
+
+    // 4. Bấm nút xử lý
+    document.getElementById('btnProcess').onclick = async () => {
+      if (!cropper) return alert('Vui lòng tải ảnh lên trước!');
+
+      const mode = document.querySelector('input[name="genMode"]:checked').value;
+      const targetBg = document.querySelector('input[name="bgColor"]:checked').value;
+      const croppedCanvas = cropper.getCroppedCanvas();
+
+      if (mode === 'mode4') {
+        await processMode4_RMBG(croppedCanvas, targetBg);
+      } else {
+        alert(`Đang xử lý ${mode} với màu nền ${targetBg}`);
+      }
+    };
+  </script>
+</body>
+</html>
