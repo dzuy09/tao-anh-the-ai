@@ -133,7 +133,7 @@
 <script type="module">
   import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers';
 
-  // 1. CHỐT BẢO MẬT: Xóa hoàn toàn cấu hình Token, không bao giờ bị lỗi Unauthorized
+  // 1. Cấu hình bảo mật
   env.allowLocalModels = false;
 
   let cropper = null;
@@ -186,7 +186,7 @@
   if (btn4x6) btn4x6.onclick = () => { currentRatio = 4/6; if (cropper) cropper.setAspectRatio(4/6); };
 
   // ==========================================
-  // KHỞI TẠO AI (Bản Open RMBG Mở Khóa 100% - Không Token)
+  // KHỞI TẠO AI
   // ==========================================
   async function getAIPipeline() {
     if (segmenter) return segmenter;
@@ -204,7 +204,6 @@
       } catch (err) {}
     }
 
-    // ĐÃ SỬA: Mô hình ormbg-ONNX (Open RMBG) không bị khóa, không gây lỗi Segformer
     const modelId = 'onnx-community/ormbg-ONNX';
     
     try {
@@ -237,7 +236,7 @@
   }
 
   // ==========================================
-  // HÀM BÓC TÁCH & GHÉP NỀN (GIỮ NGUYÊN TÓC)
+  // HÀM BÓC TÁCH & GHÉP NỀN (XỬ LÝ PIXEL BẰNG TAY)
   // ==========================================
   async function processImageWithAI(imageSourceCanvasOrUrl, targetBgHex, targetWidth, targetHeight) {
     const aiSegmenter = await getAIPipeline();
@@ -258,30 +257,52 @@
       srcImg.src = inputUrl;
     });
 
+    // 1. Nhận kết quả từ AI
     const output = await aiSegmenter(inputUrl);
 
+    // 2. Tạo Canvas chứa ảnh gốc
     const fgCanvas = document.createElement('canvas');
     fgCanvas.width = srcImg.width;
     fgCanvas.height = srcImg.height;
-    const fgCtx = fgCanvas.getContext('2d');
+    const fgCtx = fgCanvas.getContext('2d', { willReadFrequently: true });
+    fgCtx.drawImage(srcImg, 0, 0);
 
-    let maskCanvas = null;
+    // 3. Trích xuất Mask (Mặt nạ Đen Trắng) từ AI
+    let maskImage = null;
     if (output && typeof output.toCanvas === 'function') {
-      maskCanvas = output.toCanvas();
+      maskImage = output;
     } else if (Array.isArray(output) && output[0]?.mask?.toCanvas) {
-      maskCanvas = output[0].mask.toCanvas();
+      maskImage = output[0].mask;
     } else if (Array.isArray(output) && output[0]?.toCanvas) {
-      maskCanvas = output[0].toCanvas();
+      maskImage = output[0];
     }
 
-    if (maskCanvas) {
-      fgCtx.drawImage(srcImg, 0, 0);
-      fgCtx.globalCompositeOperation = 'destination-in';
-      fgCtx.drawImage(maskCanvas, 0, 0, srcImg.width, srcImg.height);
-    } else {
-      fgCtx.drawImage(srcImg, 0, 0);
+    if (maskImage) {
+      const maskCanvasRaw = maskImage.toCanvas();
+      
+      // Đồng bộ kích thước Mask với ảnh gốc
+      const maskCanvas = document.createElement('canvas');
+      maskCanvas.width = srcImg.width;
+      maskCanvas.height = srcImg.height;
+      const maskCtx = maskCanvas.getContext('2d', { willReadFrequently: true });
+      maskCtx.drawImage(maskCanvasRaw, 0, 0, srcImg.width, srcImg.height);
+
+      // Trích xuất mảng Dữ liệu Pixel
+      const fgData = fgCtx.getImageData(0, 0, srcImg.width, srcImg.height);
+      const maskData = maskCtx.getImageData(0, 0, srcImg.width, srcImg.height);
+
+      // FIX QUAN TRỌNG NHẤT: Quét từng điểm ảnh để xóa nền
+      for (let i = 0; i < fgData.data.length; i += 4) {
+        // maskData.data[i] lưu độ sáng của mặt nạ (0 là đen, 255 là trắng).
+        // Ta gán giá trị độ sáng này vào kênh Alpha (i+3) của ảnh gốc để tạo hiệu ứng trong suốt mượt mà.
+        fgData.data[i + 3] = maskData.data[i]; 
+      }
+      
+      // Vẽ lại ảnh đã đục nền trong suốt 100%
+      fgCtx.putImageData(fgData, 0, 0);
     }
 
+    // 4. Ghép ảnh đã đục nền lên phông màu thẻ
     const resultCanvas = document.createElement('canvas');
     resultCanvas.width = targetWidth;
     resultCanvas.height = targetHeight;
@@ -290,6 +311,7 @@
     ctx.fillStyle = targetBgHex;
     ctx.fillRect(0, 0, targetWidth, targetHeight);
 
+    // Scale căn giữa
     const scale = Math.max(targetWidth / fgCanvas.width, targetHeight / fgCanvas.height);
     const drawW = fgCanvas.width * scale;
     const drawH = fgCanvas.height * scale;
