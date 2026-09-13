@@ -32,6 +32,13 @@
         <!-- 2. Khung Cắt -->
         <div>
           <label class="block text-sm font-semibold text-slate-300 mb-1">2. Khung Cắt (Cropper.js)</label>
+          <!-- Tailwind CSS & Cropper CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
+  
+  <!-- THÊM DÒNG NÀY: Thư viện @imgly bản UMD ổn định nhất -->
+  <script src="https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.4.3/dist/imglyRemoveBackground.umd.min.js"></script>
           <div class="grid grid-cols-2 gap-2">
             <button id="btnCrop3x4" class="py-2 bg-pink-950/60 border border-pink-500 text-pink-200 text-xs rounded-lg font-bold">3 x 4 cm</button>
             <button id="btnCrop4x6" class="py-2 bg-slate-800 border border-slate-700 text-slate-300 text-xs rounded-lg font-bold">4 x 6 cm</button>
@@ -127,7 +134,7 @@
     document.getElementById('btnCrop3x4').onclick = () => { currentRatio = 3/4; if (cropper) cropper.setAspectRatio(3/4); };
     document.getElementById('btnCrop4x6').onclick = () => { currentRatio = 4/6; if (cropper) cropper.setAspectRatio(4/6); };
 
-    // Xử lý bằng @imgly
+    // Xử lý bằng @imgly (Đã fix lỗi tải Module và thêm publicPath)
     async function processMode4_Imgly(croppedCanvas, targetBgHex) {
       progressContainer.classList.remove('hidden');
       progressText.innerText = 'Đang khởi tạo AI bóc tách nền...';
@@ -135,20 +142,23 @@
       progressPercent.innerText = '10%';
 
       try {
-        const module = await import('https://unpkg.com/@imgly/background-removal@1.4.3/dist/imglyRemoveBackground.ext.esm.js');
-        const removeBackground = module.default;
-
         const blob = await new Promise(resolve => croppedCanvas.toBlob(resolve, 'image/png'));
-        const resultBlob = await removeBackground(blob, {
+        
+        // Cấu hình đường dẫn tải Model bắt buộc phải có khi dùng CDN
+        const config = {
+          publicPath: 'https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.4.3/dist/',
           progress: (key, current, total) => {
             const p = Math.round((current / total) * 100);
             if (p > 0) {
-              progressText.innerText = `Đang bóc tách AI...`;
+              progressText.innerText = `Đang bóc tách AI... (${p}%)`;
               progressBar.style.width = `${p}%`;
               progressPercent.innerText = `${p}%`;
             }
           }
-        });
+        };
+
+        // Sử dụng hàm imglyRemoveBackground từ thẻ script ở trên
+        const resultBlob = await imglyRemoveBackground(blob, config);
 
         progressText.innerText = 'Đang ghép phông nền...';
         progressBar.style.width = '100%';
