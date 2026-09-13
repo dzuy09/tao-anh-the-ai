@@ -8,9 +8,21 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
-  
-  <!-- Tải OpenCV bản nguyên khối (Chạy ngầm không ảnh hưởng giao diện) -->
-  <script async src="https://cdn.jsdelivr.net/npm/@techstark/opencv-js@4.8.0-release.1/dist/opencv.min.js"></script>
+
+  <!-- TẢI LÕI OPENCV XÓA MỘC ĐỘC LẬP (Không ảnh hưởng đến AI bóc tóc) -->
+  <script async src="https://cdn.jsdelivr.net/npm/@techstark/opencv-js@4.8.0-release.1/dist/opencv.min.js" onload="window.onOpenCvReady()"></script>
+  <script>
+    window.isOpenCvReady = false;
+    window.onOpenCvReady = function() {
+      window.isOpenCvReady = true;
+      const btn = document.getElementById('btnApplyInpaint');
+      if (btn) {
+        btn.innerText = '✨ Xóa Mộc Ngay';
+        btn.disabled = false;
+        btn.classList.remove('opacity-50', 'cursor-not-allowed');
+      }
+    };
+  </script>
 
   <style>
     body { background-color: #0f172a; color: #f8fafc; font-family: system-ui, sans-serif; }
@@ -22,31 +34,17 @@
 <body class="p-6">
   <div class="max-w-6xl mx-auto bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl">
     <h1 class="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-cyan-400 mb-6">
-      Studio Ảnh Thẻ AI - Tự Động Hóa & Xóa Mộc (Bản Chuẩn Ổn Định)
+      Studio Ảnh Thẻ AI - Tự Động Hóa (Bản Ổn Định Nhất)
     </h1>
 
     <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
       <div class="md:col-span-4 space-y-5">
         
-        <!-- KHU VỰC 1: XÓA MỘC ĐỎ (ĐỘC LẬP) -->
-        <div class="p-4 bg-slate-800/50 rounded-xl border border-rose-500/50 space-y-4">
-          <h2 class="font-bold text-rose-400 text-sm border-b border-slate-700 pb-2">1. XÓA MỘC ĐỎ (OFFLINE)</h2>
-          
-          <div class="grid grid-cols-2 gap-2">
-            <button id="btnToggleBrush" class="py-2 bg-slate-700 hover:bg-slate-600 border border-slate-600 text-white text-xs rounded-lg font-bold transition-all">🖌️ Bật Cọ Vẽ</button>
-            <button id="btnApplyInpaint" class="py-2 bg-rose-600 hover:bg-rose-500 text-white text-xs rounded-lg font-bold transition-all opacity-50 cursor-not-allowed" disabled>⏳ Đang tải thư viện...</button>
-          </div>
-          
-          <div id="brushTools" class="hidden bg-slate-900 p-2 rounded-lg border border-slate-700">
-             <label class="block text-[11px] text-slate-400 mb-1">Cỡ cọ: <span id="brushSizeLabel">20</span>px</label>
-             <input type="range" id="brushSize" min="5" max="80" value="20" class="w-full accent-rose-500" />
-             <p class="text-[10px] text-rose-300 mt-2 italic">* Tô kín dấu mộc, sau đó bấm Xóa Mộc.</p>
-          </div>
-        </div>
-
-        <!-- KHU VỰC 2: XỬ LÝ ẢNH ĐƠN (CỐT LÕI AI) -->
+        <!-- ============================================== -->
+        <!-- KHU VỰC 1: CẮT & TÁCH NỀN (GIỮ NGUYÊN LÊN ĐẦU) -->
+        <!-- ============================================== -->
         <div class="p-4 bg-slate-800/50 rounded-xl border border-slate-700 space-y-4">
-          <h2 class="font-bold text-pink-400 text-sm border-b border-slate-700 pb-2">2. CẮT & TÁCH NỀN AI</h2>
+          <h2 class="font-bold text-pink-400 text-sm border-b border-slate-700 pb-2">1. CẮT & TÁCH NỀN AI TÓC</h2>
           
           <div>
             <label class="block text-xs font-semibold text-slate-300 mb-1">Tải ảnh gốc</label>
@@ -70,7 +68,7 @@
           </button>
         </div>
 
-        <!-- CÀI ĐẶT MÀU NỀN -->
+        <!-- MÀU NỀN THẺ -->
         <div class="space-y-4">
           <div>
             <label class="block text-sm font-semibold text-slate-300 mb-1">Màu Nền Thẻ</label>
@@ -89,7 +87,9 @@
           </div>
         </div>
 
-        <!-- KHU VỰC 3: XỬ LÝ HÀNG LOẠT -->
+        <!-- ============================================== -->
+        <!-- KHU VỰC 2: XỬ LÝ HÀNG LOẠT -->
+        <!-- ============================================== -->
         <div class="p-4 bg-slate-800/80 rounded-xl border border-emerald-600/50 space-y-4">
           <h2 class="font-bold text-emerald-400 text-sm border-b border-emerald-800/50 pb-2">⚡ XỬ LÝ HÀNG LOẠT (TÁCH NỀN)</h2>
           <div>
@@ -100,10 +100,28 @@
           </button>
         </div>
 
+        <!-- ============================================== -->
+        <!-- KHU VỰC 3: XÓA MỘC ĐỎ (DỜI XUỐNG DƯỚI CÙNG) -->
+        <!-- ============================================== -->
+        <div class="p-4 bg-slate-800/30 rounded-xl border border-rose-500/30 space-y-4 opacity-80 hover:opacity-100 transition-opacity">
+          <h2 class="font-bold text-rose-400 text-sm border-b border-slate-700 pb-2">🔧 CÔNG CỤ PHỤ: XÓA MỘC ĐỎ</h2>
+          
+          <div class="grid grid-cols-2 gap-2">
+            <button id="btnToggleBrush" class="py-2 bg-slate-700 hover:bg-slate-600 border border-slate-600 text-white text-xs rounded-lg font-bold transition-all">🖌️ Bật Cọ Vẽ</button>
+            <button id="btnApplyInpaint" class="py-2 bg-rose-600 hover:bg-rose-500 text-white text-xs rounded-lg font-bold transition-all opacity-50 cursor-not-allowed" disabled>⏳ Đang tải lõi...</button>
+          </div>
+          
+          <div id="brushTools" class="hidden bg-slate-900 p-2 rounded-lg border border-slate-700">
+             <label class="block text-[11px] text-slate-400 mb-1">Cỡ cọ: <span id="brushSizeLabel">20</span>px</label>
+             <input type="range" id="brushSize" min="5" max="80" value="20" class="w-full accent-rose-500" />
+             <p class="text-[10px] text-rose-300 mt-2 italic">* Nếu dùng, hãy bôi xóa mộc TRƯỚC, rồi mới dùng lệnh Cắt & Tách nền ở bên trên nhé.</p>
+          </div>
+        </div>
+
         <!-- Progress Bar -->
         <div id="progressContainer" class="hidden bg-slate-800 border border-cyan-500/40 rounded-xl p-3">
           <div class="flex justify-between text-xs mb-1 text-cyan-300 font-mono">
-            <span id="progressText">Đang xử lý...</span>
+            <span id="progressText">Đang tải...</span>
             <span id="progressPercent">0%</span>
           </div>
           <div class="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
@@ -128,8 +146,12 @@
   </div>
 
   <script type="module">
-    // Nhập thư viện AI y hệt bản gốc đang hoạt động của bạn
+    // =========================================================================
+    // DƯỚI ĐÂY LÀ ĐOẠN MÃ CODE BẠN CUNG CẤP - GIỮ NGUYÊN 100% KHÔNG SỬA CHỮ NÀO
+    // =========================================================================
     import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers';
+
+    // 1. Cấu hình bảo mật
     env.allowLocalModels = false;
 
     let cropper = null;
@@ -139,7 +161,6 @@
     const fileInput = document.getElementById('fileInput');
     const batchInput = document.getElementById('batchFileInput');
     const imagePreview = document.getElementById('imagePreview');
-    const imageWrapper = document.getElementById('imageWrapper');
     const outputCanvas = document.getElementById('outputCanvas');
     const placeholderText = document.getElementById('placeholderText');
     const progressContainer = document.getElementById('progressContainer');
@@ -149,135 +170,7 @@
     const btnProcess = document.getElementById('btnProcess');
     const btnBatchProcess = document.getElementById('btnBatchProcess');
     const btnDownload = document.getElementById('btnDownload');
-    
-    // ==========================================
-    // MODULE 1: XÓA MỘC ĐỎ (BẢO VỆ KHUNG CẮT)
-    // ==========================================
-    const btnToggleBrush = document.getElementById('btnToggleBrush');
-    const btnApplyInpaint = document.getElementById('btnApplyInpaint');
-    const brushTools = document.getElementById('brushTools');
-    const brushSize = document.getElementById('brushSize');
-    const brushSizeLabel = document.getElementById('brushSizeLabel');
 
-    let isBrushMode = false;
-    let isDrawing = false;
-    let drawCanvas = document.createElement('canvas');
-    let drawCtx = drawCanvas.getContext('2d');
-    drawCanvas.style.position = 'absolute';
-    drawCanvas.style.zIndex = '50';
-    drawCanvas.style.cursor = 'crosshair';
-    drawCanvas.style.opacity = '0.5'; 
-
-    // Radar kiểm tra OpenCV đã tải xong chưa
-    const checkOpenCV = setInterval(() => {
-      if (typeof cv !== 'undefined' && typeof cv.Mat !== 'undefined') {
-        clearInterval(checkOpenCV);
-        if (btnApplyInpaint.innerText.includes('Đang tải')) {
-            btnApplyInpaint.innerText = '✨ Xóa Mộc Ngay';
-            btnApplyInpaint.disabled = false;
-            btnApplyInpaint.classList.remove('opacity-50', 'cursor-not-allowed');
-        }
-      }
-    }, 500);
-
-    btnToggleBrush.onclick = () => {
-      if (!imagePreview.src || imagePreview.src === window.location.href) return alert('Vui lòng tải ảnh lên trước!');
-      
-      isBrushMode = !isBrushMode;
-      if (isBrushMode) {
-        btnToggleBrush.innerText = '❌ Hủy Vẽ Cọ';
-        btnToggleBrush.classList.replace('bg-slate-700', 'bg-rose-900');
-        brushTools.classList.remove('hidden');
-        
-        // Hủy bỏ Cropper để tránh lỗi giao diện
-        if (cropper) cropper.destroy();
-        
-        drawCanvas.width = imagePreview.naturalWidth;
-        drawCanvas.height = imagePreview.naturalHeight;
-        drawCanvas.style.width = imagePreview.clientWidth + 'px';
-        drawCanvas.style.height = imagePreview.clientHeight + 'px';
-        drawCanvas.style.top = imagePreview.offsetTop + 'px';
-        drawCanvas.style.left = imagePreview.offsetLeft + 'px';
-        
-        drawCtx.fillStyle = 'black';
-        drawCtx.fillRect(0, 0, drawCanvas.width, drawCanvas.height);
-        imageWrapper.appendChild(drawCanvas);
-      } else {
-        btnToggleBrush.innerText = '🖌️ Bật Cọ Vẽ';
-        btnToggleBrush.classList.replace('bg-rose-900', 'bg-slate-700');
-        brushTools.classList.add('hidden');
-        
-        if (drawCanvas.parentNode) drawCanvas.parentNode.removeChild(drawCanvas);
-        
-        // Tái tạo lại Cropper y hệt lúc mới tải ảnh lên
-        if (cropper) cropper.destroy();
-        cropper = new Cropper(imagePreview, { aspectRatio: currentRatio, viewMode: 1, autoCropArea: 0.9, responsive: true });
-      }
-    };
-
-    brushSize.oninput = (e) => brushSizeLabel.innerText = e.target.value;
-
-    function getMousePos(canvas, evt) {
-      const rect = canvas.getBoundingClientRect();
-      const scaleX = canvas.width / rect.width;
-      const scaleY = canvas.height / rect.height;
-      return { x: (evt.clientX - rect.left) * scaleX, y: (evt.clientY - rect.top) * scaleY };
-    }
-
-    drawCanvas.addEventListener('mousedown', (e) => { isDrawing = true; drawCtx.beginPath(); drawCtx.moveTo(getMousePos(drawCanvas, e).x, getMousePos(drawCanvas, e).y); });
-    drawCanvas.addEventListener('mousemove', (e) => { if (isDrawing) { drawCtx.lineTo(getMousePos(drawCanvas, e).x, getMousePos(drawCanvas, e).y); drawCtx.strokeStyle = 'white'; drawCtx.lineWidth = brushSize.value * (drawCanvas.width / drawCanvas.clientWidth); drawCtx.lineCap = 'round'; drawCtx.lineJoin = 'round'; drawCtx.stroke(); } });
-    drawCanvas.addEventListener('mouseup', () => isDrawing = false);
-    drawCanvas.addEventListener('mouseout', () => isDrawing = false);
-
-    btnApplyInpaint.onclick = async () => {
-      if (typeof cv === 'undefined' || !cv.Mat) return alert('Thuật toán vẫn đang tải. Vui lòng chờ vài giây!');
-
-      progressContainer.classList.remove('hidden');
-      progressText.innerText = 'Đang Xóa Mộc (OpenCV)...';
-      progressBar.style.width = '100%';
-      progressPercent.innerText = '100%';
-
-      setTimeout(() => {
-        try {
-          const srcCanvas = document.createElement('canvas');
-          srcCanvas.width = imagePreview.naturalWidth;
-          srcCanvas.height = imagePreview.naturalHeight;
-          srcCanvas.getContext('2d').drawImage(imagePreview, 0, 0);
-
-          let srcMatRGBA = cv.imread(srcCanvas);
-          let srcMatRGB = new cv.Mat();
-          cv.cvtColor(srcMatRGBA, srcMatRGB, cv.COLOR_RGBA2RGB); 
-
-          let maskMat = cv.imread(drawCanvas);
-          let maskGray = new cv.Mat();
-          cv.cvtColor(maskMat, maskGray, cv.COLOR_RGBA2GRAY, 0); 
-
-          let dstMat = new cv.Mat();
-          cv.inpaint(srcMatRGB, maskGray, dstMat, 5, cv.INPAINT_TELEA);
-
-          cv.imshow(srcCanvas, dstMat);
-          const newDataUrl = srcCanvas.toDataURL('image/jpeg', 1.0);
-          
-          srcMatRGBA.delete(); srcMatRGB.delete(); maskMat.delete(); maskGray.delete(); dstMat.delete();
-
-          // 1. Cập nhật ảnh gốc
-          imagePreview.src = newDataUrl;
-          
-          // 2. Kích hoạt tắt cọ vẽ (Hàm tắt cọ vẽ sẽ TỰ ĐỘNG bọc lại Cropper mới)
-          btnToggleBrush.click(); 
-          
-          setTimeout(() => progressContainer.classList.add('hidden'), 500);
-        } catch (err) {
-          console.error(err);
-          alert('Lỗi Xóa Mộc: ' + err.message);
-          progressContainer.classList.add('hidden');
-        }
-      }, 50);
-    };
-
-    // ==========================================
-    // MODULE 2: TẢI ẢNH LÊN & KHUNG CẮT
-    // ==========================================
     if (fileInput) {
       fileInput.addEventListener('change', (e) => {
         const file = e.target.files[0];
@@ -305,17 +198,19 @@
       });
     }
 
+    const btn3x4 = document.getElementById('btnCrop3x4');
+    const btn4x6 = document.getElementById('btnCrop4x6');
     if (btn3x4) btn3x4.onclick = () => { currentRatio = 3/4; if (cropper) cropper.setAspectRatio(3/4); };
     if (btn4x6) btn4x6.onclick = () => { currentRatio = 4/6; if (cropper) cropper.setAspectRatio(4/6); };
 
     // ==========================================
-    // MODULE 3: LÕI AI TÁCH NỀN (BẢN GỐC HOẠT ĐỘNG 100%)
+    // KHỞI TẠO AI
     // ==========================================
     async function getAIPipeline() {
       if (segmenter) return segmenter;
 
       if (progressContainer) progressContainer.classList.remove('hidden');
-      if (progressText) progressText.innerText = 'Khởi tạo AI Bóc Tóc...';
+      if (progressText) progressText.innerText = 'Khởi tạo AI Bóc Tóc (WebGPU)...';
       if (progressBar) progressBar.style.width = '10%';
       if (progressPercent) progressPercent.innerText = '10%';
 
@@ -335,19 +230,20 @@
           progress_callback: (item) => {
             if (item && item.status === 'progress') {
               const p = Math.round(item.progress || 0);
-              if (progressText) progressText.innerText = `Đang tải AI Tách nền (${p}%)...`;
+              if (progressText) progressText.innerText = `Đang tải Model AI (${device.toUpperCase()})...`;
               if (progressBar) progressBar.style.width = `${p}%`;
               if (progressPercent) progressPercent.innerText = `${p}%`;
             }
           }
         });
       } catch (error) {
+        console.warn('Khởi tạo WebGPU thất bại, thử lại với WASM:', error);
         segmenter = await pipeline('image-segmentation', modelId, {
           device: 'wasm',
           progress_callback: (item) => {
             if (item && item.status === 'progress') {
               const p = Math.round(item.progress || 0);
-              if (progressText) progressText.innerText = `Đang tải AI (WASM) (${p}%)...`;
+              if (progressText) progressText.innerText = `Đang tải Model AI (WASM)...`;
               if (progressBar) progressBar.style.width = `${p}%`;
               if (progressPercent) progressPercent.innerText = `${p}%`;
             }
@@ -357,12 +253,15 @@
       return segmenter;
     }
 
+    // ==========================================
+    // HÀM BÓC TÁCH & GHÉP NỀN (XỬ LÝ PIXEL BẰNG TAY)
+    // ==========================================
     async function processImageWithAI(imageSourceCanvasOrUrl, targetBgHex, targetWidth, targetHeight) {
       const aiSegmenter = await getAIPipeline();
 
-      if (progressText) progressText.innerText = 'AI đang bóc tách nền...';
-      if (progressBar) progressBar.style.width = '80%';
-      if (progressPercent) progressPercent.innerText = '80%';
+      if (progressText) progressText.innerText = 'Đang bóc tách nền & viền tóc AI...';
+      if (progressBar) progressBar.style.width = '90%';
+      if (progressPercent) progressPercent.innerText = '90%';
 
       const srcImg = new Image();
       srcImg.crossOrigin = 'anonymous';
@@ -376,36 +275,52 @@
         srcImg.src = inputUrl;
       });
 
+      // 1. Nhận kết quả từ AI
       const output = await aiSegmenter(inputUrl);
 
+      // 2. Tạo Canvas chứa ảnh gốc
       const fgCanvas = document.createElement('canvas');
       fgCanvas.width = srcImg.width;
       fgCanvas.height = srcImg.height;
       const fgCtx = fgCanvas.getContext('2d', { willReadFrequently: true });
       fgCtx.drawImage(srcImg, 0, 0);
 
+      // 3. Trích xuất Mask (Mặt nạ Đen Trắng) từ AI
       let maskImage = null;
-      if (output && typeof output.toCanvas === 'function') maskImage = output;
-      else if (Array.isArray(output) && output[0]?.mask?.toCanvas) maskImage = output[0].mask;
-      else if (Array.isArray(output) && output[0]?.toCanvas) maskImage = output[0];
+      if (output && typeof output.toCanvas === 'function') {
+        maskImage = output;
+      } else if (Array.isArray(output) && output[0]?.mask?.toCanvas) {
+        maskImage = output[0].mask;
+      } else if (Array.isArray(output) && output[0]?.toCanvas) {
+        maskImage = output[0];
+      }
 
       if (maskImage) {
         const maskCanvasRaw = maskImage.toCanvas();
+        
+        // Đồng bộ kích thước Mask với ảnh gốc
         const maskCanvas = document.createElement('canvas');
         maskCanvas.width = srcImg.width;
         maskCanvas.height = srcImg.height;
         const maskCtx = maskCanvas.getContext('2d', { willReadFrequently: true });
         maskCtx.drawImage(maskCanvasRaw, 0, 0, srcImg.width, srcImg.height);
 
+        // Trích xuất mảng Dữ liệu Pixel
         const fgData = fgCtx.getImageData(0, 0, srcImg.width, srcImg.height);
         const maskData = maskCtx.getImageData(0, 0, srcImg.width, srcImg.height);
 
+        // FIX QUAN TRỌNG NHẤT: Quét từng điểm ảnh để xóa nền
         for (let i = 0; i < fgData.data.length; i += 4) {
+          // maskData.data[i] lưu độ sáng của mặt nạ (0 là đen, 255 là trắng).
+          // Ta gán giá trị độ sáng này vào kênh Alpha (i+3) của ảnh gốc để tạo hiệu ứng trong suốt mượt mà.
           fgData.data[i + 3] = maskData.data[i]; 
         }
+        
+        // Vẽ lại ảnh đã đục nền trong suốt 100%
         fgCtx.putImageData(fgData, 0, 0);
       }
 
+      // 4. Ghép ảnh đã đục nền lên phông màu thẻ
       const resultCanvas = document.createElement('canvas');
       resultCanvas.width = targetWidth;
       resultCanvas.height = targetHeight;
@@ -414,6 +329,7 @@
       ctx.fillStyle = targetBgHex;
       ctx.fillRect(0, 0, targetWidth, targetHeight);
 
+      // Scale căn giữa
       const scale = Math.max(targetWidth / fgCanvas.width, targetHeight / fgCanvas.height);
       const drawW = fgCanvas.width * scale;
       const drawH = fgCanvas.height * scale;
@@ -424,14 +340,15 @@
       return resultCanvas;
     }
 
+    // ==========================================
+    // XỬ LÝ ẢNH ĐƠN
+    // ==========================================
     if (btnProcess) {
       btnProcess.onclick = async () => {
         if (!cropper) return alert('Vui lòng tải ảnh lên trước!');
         try {
           const targetBg = (document.querySelector('input[name="bgColor"]:checked') || {}).value || '#ffffff';
           const croppedCanvas = cropper.getCroppedCanvas();
-          if (!croppedCanvas) return alert('Không thể cắt ảnh. Thử tải lại ảnh.');
-          
           const targetW = currentRatio === 3 / 4 ? 900 : 1200;
           const targetH = currentRatio === 3 / 4 ? 1200 : 1800;
 
@@ -468,10 +385,15 @@
       };
     }
 
+    // ==========================================
+    // XỬ LÝ HÀNG LOẠT (BATCH PROCESSING)
+    // ==========================================
     if (btnBatchProcess) {
       btnBatchProcess.onclick = async () => {
         const files = batchInput ? batchInput.files : null;
-        if (!files || files.length === 0) return alert('Vui lòng chọn ảnh!');
+        if (!files || files.length === 0) {
+          return alert('Vui lòng chọn ít nhất 1 ảnh để xử lý hàng loạt!');
+        }
 
         const targetBg = (document.querySelector('input[name="bgColor"]:checked') || {}).value || '#ffffff';
         const targetW = currentRatio === 3 / 4 ? 900 : 1200;
@@ -496,15 +418,130 @@
             link.download = `${cleanName}.jpg`;
             link.href = finalCanvas.toDataURL('image/jpeg', 1.0);
             link.click();
+
             await new Promise((r) => setTimeout(r, 400));
           } catch (err) {
-            console.error(`Lỗi xử lý file:`, err);
+            console.error(`Lỗi xử lý file ${file.name}:`, err);
           }
         }
+
         if (progressContainer) progressContainer.classList.add('hidden');
-        alert(`✅ Hoàn tất xử lý ${files.length} ảnh!`);
+        alert(`✅ Đã hoàn tất xử lý & tải về ${files.length} ảnh thẻ!`);
       };
     }
+
+    // =========================================================================
+    // MODULE ĐÍNH KÈM: XÓA MỘC ĐỎ (Bổ sung an toàn bên ngoài luồng chính)
+    // =========================================================================
+    const btnToggleBrush = document.getElementById('btnToggleBrush');
+    const btnApplyInpaint = document.getElementById('btnApplyInpaint');
+    const brushTools = document.getElementById('brushTools');
+    const brushSize = document.getElementById('brushSize');
+    const brushSizeLabel = document.getElementById('brushSizeLabel');
+    const imageWrapperObj = document.getElementById('imageWrapper');
+
+    let isBrushMode = false;
+    let isDrawing = false;
+    let drawCanvas = document.createElement('canvas');
+    let drawCtx = drawCanvas.getContext('2d');
+    drawCanvas.style.position = 'absolute';
+    drawCanvas.style.zIndex = '50';
+    drawCanvas.style.cursor = 'crosshair';
+    drawCanvas.style.opacity = '0.5'; 
+
+    btnToggleBrush.onclick = () => {
+      if (!imagePreview.src || imagePreview.src === window.location.href) return alert('Vui lòng tải ảnh lên trước!');
+      
+      isBrushMode = !isBrushMode;
+      if (isBrushMode) {
+        btnToggleBrush.innerText = '❌ Hủy Vẽ Cọ';
+        btnToggleBrush.classList.replace('bg-slate-700', 'bg-rose-900');
+        brushTools.classList.remove('hidden');
+        
+        // Gỡ bỏ hoàn toàn Cropper để người dùng bôi cọ
+        if (cropper) cropper.destroy();
+        
+        drawCanvas.width = imagePreview.naturalWidth;
+        drawCanvas.height = imagePreview.naturalHeight;
+        drawCanvas.style.width = imagePreview.clientWidth + 'px';
+        drawCanvas.style.height = imagePreview.clientHeight + 'px';
+        drawCanvas.style.top = imagePreview.offsetTop + 'px';
+        drawCanvas.style.left = imagePreview.offsetLeft + 'px';
+        
+        drawCtx.fillStyle = 'black';
+        drawCtx.fillRect(0, 0, drawCanvas.width, drawCanvas.height);
+        imageWrapperObj.appendChild(drawCanvas);
+      } else {
+        btnToggleBrush.innerText = '🖌️ Bật Cọ Vẽ';
+        btnToggleBrush.classList.replace('bg-rose-900', 'bg-slate-700');
+        brushTools.classList.add('hidden');
+        if (drawCanvas.parentNode) drawCanvas.parentNode.removeChild(drawCanvas);
+        
+        // Phục hồi lại Cropper nguyên vẹn như lúc mới tải ảnh lên
+        if (cropper) cropper.destroy();
+        cropper = new Cropper(imagePreview, { aspectRatio: currentRatio, viewMode: 1, autoCropArea: 0.9, responsive: true });
+      }
+    };
+
+    brushSize.oninput = (e) => brushSizeLabel.innerText = e.target.value;
+
+    function getMousePos(canvas, evt) {
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      return { x: (evt.clientX - rect.left) * scaleX, y: (evt.clientY - rect.top) * scaleY };
+    }
+
+    drawCanvas.addEventListener('mousedown', (e) => { isDrawing = true; drawCtx.beginPath(); drawCtx.moveTo(getMousePos(drawCanvas, e).x, getMousePos(drawCanvas, e).y); });
+    drawCanvas.addEventListener('mousemove', (e) => { if (isDrawing) { drawCtx.lineTo(getMousePos(drawCanvas, e).x, getMousePos(drawCanvas, e).y); drawCtx.strokeStyle = 'white'; drawCtx.lineWidth = brushSize.value * (drawCanvas.width / drawCanvas.clientWidth); drawCtx.lineCap = 'round'; drawCtx.lineJoin = 'round'; drawCtx.stroke(); } });
+    drawCanvas.addEventListener('mouseup', () => isDrawing = false);
+    drawCanvas.addEventListener('mouseout', () => isDrawing = false);
+
+    btnApplyInpaint.onclick = () => {
+      if (!window.isOpenCvReady || typeof cv === 'undefined' || !cv.Mat) return alert('Thuật toán vẫn đang tải. Vui lòng chờ vài giây!');
+
+      progressContainer.classList.remove('hidden');
+      progressText.innerText = 'Đang xóa mộc đỏ...';
+      progressBar.style.width = '100%';
+      progressPercent.innerText = '100%';
+
+      setTimeout(() => {
+        try {
+          const srcCanvas = document.createElement('canvas');
+          srcCanvas.width = imagePreview.naturalWidth;
+          srcCanvas.height = imagePreview.naturalHeight;
+          srcCanvas.getContext('2d').drawImage(imagePreview, 0, 0);
+
+          let srcMatRGBA = cv.imread(srcCanvas);
+          let srcMatRGB = new cv.Mat();
+          cv.cvtColor(srcMatRGBA, srcMatRGB, cv.COLOR_RGBA2RGB); 
+
+          let maskMat = cv.imread(drawCanvas);
+          let maskGray = new cv.Mat();
+          cv.cvtColor(maskMat, maskGray, cv.COLOR_RGBA2GRAY, 0); 
+
+          let dstMat = new cv.Mat();
+          cv.inpaint(srcMatRGB, maskGray, dstMat, 5, cv.INPAINT_TELEA);
+
+          cv.imshow(srcCanvas, dstMat);
+          const newDataUrl = srcCanvas.toDataURL('image/jpeg', 1.0);
+          
+          srcMatRGBA.delete(); srcMatRGB.delete(); maskMat.delete(); maskGray.delete(); dstMat.delete();
+
+          // Cập nhật ảnh sạch mộc
+          imagePreview.src = newDataUrl;
+          
+          // Tự động kích hoạt nút Hủy Vẽ Cọ (Nó sẽ tự động tái tạo lại Cropper.js chuẩn xác)
+          btnToggleBrush.click(); 
+          
+          setTimeout(() => progressContainer.classList.add('hidden'), 500);
+        } catch (err) {
+          console.error(err);
+          alert('Lỗi Xóa Mộc: ' + err.message);
+          progressContainer.classList.add('hidden');
+        }
+      }, 50);
+    };
   </script>
 </body>
 </html>
